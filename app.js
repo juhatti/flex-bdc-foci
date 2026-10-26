@@ -314,7 +314,6 @@ function renderAttendeesList() {
         row.className = 'py-3 flex items-center justify-between text-sm hover:bg-gray-50/50 px-2 rounded-xl transition';
         
         if (isSub) {
-            // Beugró sora admin nézetben (nincs státusz váltó gomb, helyette törlés, nincs megjegyzés, lila badge)
             row.innerHTML = `
                 <div class="flex items-center space-x-3">
                     <span class="text-xs text-gray-400 font-bold w-4">${idx + 1}.</span>
@@ -334,7 +333,6 @@ function renderAttendeesList() {
                 row.querySelector('.btn-del-sub').addEventListener('click', () => removeGeneralSubstitute(uname));
             }
         } else {
-            // Normál jelentkező sora
             row.innerHTML = `
                 <div class="flex items-center space-x-3">
                     <span class="text-xs text-gray-400 font-bold w-4">${idx + 1}.</span>
@@ -469,14 +467,14 @@ function renderStandings() {
 
     const statsMap = {};
     Object.values(users).forEach(u => {
-        statsMap[u.username] = { username: u.username, name: u.name, M: 0, W: 0, D: 0, L: 0, P: 0, G: 0, form: [], matchesList: [] };
+        statsMap[u.username] = { username: u.username, name: u.name, M: 0, W: 0, D: 0, L: 0, P: 0, G: 0, goalsAgainst: 0, maxGoalsInSingleMatch: 0, form: [], matchesList: [] };
     });
 
-    matches.forEach(m => {
-        if (m.date && !m.date.startsWith(selectedYear.toString())) {
-            return;
-        }
+    const filteredMatches = matches.filter(m => m.date && m.date.startsWith(selectedYear.toString()));
 
+    filteredMatches.dates = filteredMatches; // Referencia
+
+    filteredMatches.forEach(m => {
         const scoreA = parseInt(m.scoreA);
         const scoreB = parseInt(m.scoreB);
 
@@ -487,8 +485,14 @@ function renderStandings() {
                 if (!statsMap[p.username]) return;
                 
                 const st = statsMap[p.username];
+                const goalsThisMatch = parseInt(p.goals || 0);
                 st.M++;
-                st.G += parseInt(p.goals || 0);
+                st.G += goalsThisMatch;
+                st.goalsAgainst += oppScore;
+
+                if (goalsThisMatch > st.maxGoalsInSingleMatch) {
+                    st.maxGoalsInSingleMatch = goalsThisMatch;
+                }
 
                 let outcome = 'D';
                 if (myScore > oppScore) { st.W++; st.P += 3; outcome = 'W'; }
@@ -496,7 +500,7 @@ function renderStandings() {
                 else { st.L++; outcome = 'L'; }
 
                 st.form.push(outcome);
-                st.matchesList.push({ outcome, goals: parseInt(p.goals || 0) });
+                st.matchesList.push({ outcome, goals: goalsThisMatch });
             });
         };
 
@@ -506,13 +510,11 @@ function renderStandings() {
 
     const sorted = Object.values(statsMap).filter(s => s.M > 0).sort((a, b) => b.P - a.P || b.G - a.G);
 
-    let maxGoals = 0;
-    sorted.forEach(st => {
-        if (st.G > maxGoals) maxGoals = st.G;
-    });
+    let maxGoals = Math.max(...sorted.map(s => s.G), 0);
 
     sorted.forEach((st, idx) => {
-        let streakBadge = '';
+        // Tűz / Hópehely kiszámítása a GF (sorozat) oszlophoz
+        let streakBadge = '-';
         if (st.matchesList.length >= 2) {
             let scoreStreak = 0;
             let droughtStreak = 0;
@@ -525,8 +527,8 @@ function renderStandings() {
                     droughtStreak++;
                 }
             }
-            if (scoreStreak >= 2) streakBadge = `<span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 shadow-2xs">🔥${scoreStreak}</span>`;
-            else if (droughtStreak >= 2) streakBadge = `<span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 shadow-2xs">❄️${droughtStreak}</span>`;
+            if (scoreStreak >= 2) streakBadge = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 shadow-2xs">🔥${scoreStreak}</span>`;
+            else if (droughtStreak >= 2) streakBadge = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 shadow-2xs">❄️${droughtStreak}</span>`;
         }
 
         let topScorerBadge = '';
@@ -549,7 +551,7 @@ function renderStandings() {
         tr.className = 'hover:bg-gray-50/80 transition';
         tr.innerHTML = `
             <td class="py-3 px-3 text-xs text-gray-400 font-bold">${idx + 1}</td>
-            <td class="py-3 px-3 font-semibold text-gray-800">${formatHungarianName(st.name)}${topScorerBadge}${streakBadge}</td>
+            <td class="py-3 px-3 font-semibold text-gray-800">${formatHungarianName(st.name)}${topScorerBadge}</td>
             <td class="py-3 px-2 text-center text-xs hidden sm:table-cell">${st.M}</td>
             <td class="py-3 px-2 text-center text-xs hidden md:table-cell">${st.W}</td>
             <td class="py-3 px-2 text-center text-xs hidden md:table-cell">${st.D}</td>
@@ -558,9 +560,208 @@ function renderStandings() {
             <td class="py-3 px-2 text-center text-sm font-bold text-gray-900">${st.G}</td>
             <td class="py-3 px-2 text-center text-xs text-gray-500 hidden lg:table-cell">${pm}</td>
             <td class="py-3 px-2 text-center text-xs text-gray-500 hidden lg:table-cell">${gm}</td>
+            <td class="py-3 px-2 text-center">${streakBadge}</td>
             <td class="py-3 px-3 text-center whitespace-nowrap hidden sm:table-cell">${formHtml}</td>
         `;
         tbody.appendChild(tr);
+    });
+
+    renderAwards(sorted, filteredMatches);
+}
+
+function renderAwards(sortedPlayers, filteredMatches) {
+    const container = document.getElementById('awards-container');
+    container.innerHTML = '';
+
+    if (sortedPlayers.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-400 col-span-full text-center py-4">Még nincsenek adatok a különdíjakhoz.</p>`;
+        return;
+    }
+
+    // 1. Bajnok (Holtverseny támogatás, meccs szám nem számít)
+    const maxPoints = Math.max(...sortedPlayers.map(p => p.P));
+    const champions = sortedPlayers.filter(p => p.P === maxPoints);
+    const championNames = champions.map(c => formatHungarianName(c.name)).join(', ');
+
+    // 2. Gólkirály (Holtverseny támogatás, meccs szám nem számít)
+    const maxGoals = Math.max(...sortedPlayers.map(p => p.G));
+    const topScorers = sortedPlayers.filter(p => p.G === maxGoals && p.G > 0);
+    const topScorerNames = topScorers.length > 0 ? topScorers.map(s => formatHungarianName(s.name)).join(', ') : '-';
+
+    // 3. Legjobb P/M (min. 2 meccs)
+    const validPM = sortedPlayers.filter(s => s.M >= 2);
+    const bestPMPlayer = validPM.length > 0 ? [...validPM].sort((a, b) => (b.P / b.M) - (a.P / a.M))[0] : sortedPlayers[0];
+
+    // 4. Legjobb G/M (min. 2 meccs)
+    const validGM = sortedPlayers.filter(s => s.M >= 2);
+    const bestGMPlayer = validGM.length > 0 ? [...validGM].sort((a, b) => (b.G / b.M) - (a.G / a.M))[0] : sortedPlayers[0];
+
+    // 5. Legtöbb gól egy meccsen
+    const bestSingleMatchScorer = [...sortedPlayers].sort((a, b) => b.maxGoalsInSingleMatch - a.maxGoalsInSingleMatch)[0];
+
+    // 6. Legtöbb győztes meccs száma
+    const mostWinsPlayer = [...sortedPlayers].sort((a, b) => b.W - a.W)[0];
+
+    // 7. A Fal (min. 2 meccs)
+    const validDefenders = sortedPlayers.filter(s => s.M >= 2);
+    const bestDefender = validDefenders.length > 0 
+        ? [...validDefenders].sort((a, b) => (a.goalsAgainst / a.M) - (b.goalsAgainst / b.M))[0]
+        : sortedPlayers[0];
+
+    // 8. Győzelmi Garancia (min. 2 meccs)
+    const validWinRate = sortedPlayers.filter(s => s.M >= 2);
+    const bestWinRate = validWinRate.length > 0
+        ? [...validWinRate].sort((a, b) => (b.W / b.M) - (a.W / a.M))[0]
+        : sortedPlayers[0];
+
+    // 9. Megállíthatatlan
+    let bestStreakPlayer = sortedPlayers[0];
+    let maxStreak = -1;
+    sortedPlayers.forEach(p => {
+        let currentStreak = 0;
+        let maxPStreak = 0;
+        p.matchesList.forEach(m => {
+            if (m.outcome === 'W') {
+                currentStreak++;
+                if (currentStreak > maxPStreak) maxPStreak = currentStreak;
+            } else {
+                currentStreak = 0;
+            }
+        });
+        if (maxPStreak > maxStreak) {
+            maxStreak = maxPStreak;
+            bestStreakPlayer = p;
+        }
+    });
+
+    let highestScoringMatch = null;
+    let lowestScoringMatch = null;
+    let biggestMarginMatch = null;
+
+    if (filteredMatches.length > 0) {
+        highestScoringMatch = [...filteredMatches].sort((a, b) => (parseInt(b.scoreA) + parseInt(b.scoreB)) - (parseInt(a.scoreA) + parseInt(a.scoreB)))[0];
+        lowestScoringMatch = [...filteredMatches].sort((a, b) => (parseInt(a.scoreA) + parseInt(a.scoreB)) - (parseInt(b.scoreA) + parseInt(b.scoreB)))[0];
+        biggestMarginMatch = [...filteredMatches].sort((a, b) => Math.abs(parseInt(b.scoreA) - parseInt(b.scoreB)) - Math.abs(parseInt(a.scoreA) - parseInt(a.scoreB)))[0];
+    }
+
+    const awardsList = [
+        {
+            title: "🏆 Bajnok",
+            definition: "A tabella éllovasa",
+            name: championNames,
+            value: `${maxPoints} pont`,
+            color: "bg-amber-50 text-amber-800 border-amber-200"
+        },
+        {
+            title: "👑 Gólkirály",
+            definition: "Legtöbb gólt lövő játékos",
+            name: topScorerNames,
+            value: `${maxGoals} gól`,
+            color: "bg-yellow-50 text-yellow-800 border-yellow-200"
+        },
+        {
+            title: "📈 Legjobb P/M",
+            definition: "A legmagasabb pont/meccs átlaggal rendelkező játékos (min. 2 meccs)",
+            name: formatHungarianName(bestPMPlayer.name),
+            value: `${(bestPMPlayer.P / bestPMPlayer.M).toFixed(2)} P/M`,
+            color: "bg-emerald-50 text-emerald-800 border-emerald-200"
+        },
+        {
+            title: "⚽ Legjobb G/M",
+            definition: "A legmagasabb gól/meccs átlaggal rendelkező játékos (min. 2 meccs)",
+            name: formatHungarianName(bestGMPlayer.name),
+            value: `${(bestGMPlayer.G / bestGMPlayer.M).toFixed(2)} G/M`,
+            color: "bg-teal-50 text-teal-800 border-teal-200"
+        },
+        {
+            title: "🎯 Mesterlövész",
+            definition: "A legtöbb gólt szerző játékos egyetlen mérkőzésen",
+            name: formatHungarianName(bestSingleMatchScorer.name),
+            value: `${bestSingleMatchScorer.maxGoalsInSingleMatch} gól egy meccsen`,
+            color: "bg-red-50 text-red-800 border-red-200"
+        },
+        {
+            title: "🥇 A Gyűjtő",
+            definition: "A legtöbb győztes mérkőzéssel rendelkező játékos",
+            name: formatHungarianName(mostWinsPlayer.name),
+            value: `${mostWinsPlayer.W} győztes meccs`,
+            color: "bg-indigo-50 text-indigo-800 border-indigo-200"
+        },
+        {
+            title: "🛡️ A Fal",
+            definition: "A legkevesebb kapott gól/meccs átlagú játékos (min. 2 meccs)",
+            name: formatHungarianName(bestDefender.name),
+            value: `${(bestDefender.goalsAgainst / bestDefender.M).toFixed(2)} gól/meccs`,
+            color: "bg-blue-50 text-blue-800 border-blue-200"
+        },
+        {
+            title: "🧱 Győzelmi Garancia",
+            definition: "A legmagasabb győzelmi aránnyal rendelkező játékos (min. 2 meccs)",
+            name: formatHungarianName(bestWinRate.name),
+            value: `${Math.round((bestWinRate.W / bestWinRate.M) * 100)}% győzelem`,
+            color: "bg-cyan-50 text-cyan-800 border-cyan-200"
+        },
+        {
+            title: "🔥 Megállíthatatlan",
+            definition: "A leghosszabb zsinórbeli győzelmi széria",
+            name: formatHungarianName(bestStreakPlayer.name),
+            value: `${maxStreak} győzelem zsinórban`,
+            color: "bg-orange-50 text-orange-800 border-orange-200"
+        }
+    ];
+
+    if (highestScoringMatch) {
+        awardsList.push({
+            title: "🎆 Leggólgazdagabb",
+            definition: "A legtöbb gól egyetlen mérkőzésen",
+            name: `${highestScoringMatch.date}`,
+            value: `Végeredmény: ${highestScoringMatch.scoreA} : ${highestScoringMatch.scoreB} (${parseInt(highestScoringMatch.scoreA) + parseInt(highestScoringMatch.scoreB)} gól)`,
+            color: "bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200"
+        });
+    }
+
+    if (lowestScoringMatch) {
+        awardsList.push({
+            title: "🔒 Leggólszegényebb",
+            definition: "A legkevesebb gól egyetlen mérkőzésen",
+            name: `${lowestScoringMatch.date}`,
+            value: `Végeredmény: ${lowestScoringMatch.scoreA} : ${lowestScoringMatch.scoreB} (${parseInt(lowestScoringMatch.scoreA) + parseInt(lowestScoringMatch.scoreB)} gól)`,
+            color: "bg-slate-100 text-slate-800 border-slate-200"
+        });
+    }
+
+    if (biggestMarginMatch) {
+        const diff = Math.abs(parseInt(biggestMarginMatch.scoreA) - parseInt(biggestMarginMatch.scoreB));
+        awardsList.push({
+            title: "💥 Legnagyobb kiütés",
+            definition: "A legnagyobb gólkülönbségű mérkőzés",
+            name: `${biggestMarginMatch.date}`,
+            value: `Végeredmény: ${biggestMarginMatch.scoreA} : ${biggestMarginMatch.scoreB} (${diff} gól különbség)`,
+            color: "bg-rose-50 text-rose-800 border-rose-200"
+        });
+    }
+
+    awardsList.forEach(award => {
+        const card = document.createElement('div');
+        card.className = `award-card p-4 rounded-xl border ${award.color} flex flex-col justify-between cursor-pointer shadow-2xs`;
+        card.tabIndex = 0;
+        card.innerHTML = `
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider">${award.title}</span>
+                    <i class="fa-solid fa-circle-question text-xs opacity-60"></i>
+                </div>
+                <div class="text-base font-black mt-1 leading-snug">${award.name}</div>
+            </div>
+            <div class="text-xs font-semibold opacity-90 mt-2 pt-2 border-t border-black/5">${award.value}</div>
+            
+            <!-- Tooltip -->
+            <div class="award-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-52 p-2.5 bg-gray-900 text-white text-[11px] rounded-xl shadow-xl pointer-events-none text-center z-30">
+                ${award.definition}
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+            </div>
+        `;
+        container.appendChild(card);
     });
 }
 
