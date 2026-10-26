@@ -1,0 +1,123 @@
+{
+  "matches": [
+    {
+      "date": "2026. 01. 20.",
+      "scoreA": 4,
+      "scoreB": 9,
+      "teamA": [
+        { "goals": 1, "isSubstitute": false, "name": "Admin User", "username": "admin" },
+        { "goals": 0, "isSubstitute": false, "name": "Játékos Egy", "username": "user1" },
+        { "goals": 1, "isSubstitute": false, "name": "Játékos Kettő", "username": "user2" },
+        { "goals": 2, "isSubstitute": false, "name": "Játékos Három", "username": "user3" },
+        { "goals": 0, "isSubstitute": false, "name": "Játékos Négy", "username": "user4" }
+      ],
+      "teamB": [
+        { "goals": 0, "isSubstitute": false, "name": "Játékos Öt", "username": "user5" },
+        { "goals": 3, "isSubstitute": false, "name": "Játékos Hat", "username": "user6" },
+        { "goals": 1, "isSubstitute": false, "name": "Játékos Hét", "username": "user7" },
+        { "goals": 1, "isSubstitute": false, "name": "Játékos Nyolc", "username": "user8" },
+        { "goals": 4, "isSubstitute": false, "name": "Játékos Kilenc", "username": "user9" }
+      ]
+    },
+    {
+      "date": "2026. 01. 27.",
+      "scoreA": 5,
+      "scoreB": 3,
+      "teamA": [
+        { "goals": 2, "isSubstitute": false, "name": "Admin User", "username": "admin" },
+        { "goals": 1, "isSubstitute": false, "name": "Játékos Egy", "username": "user1" },
+        { "goals": 2, "isSubstitute": false, "name": "Játékos Három", "username": "user3" },
+        { "goals": 0, "isSubstitute": false, "name": "Játékos Öt", "username": "user5" },
+        { "goals": 0, "isSubstitute": false, "name": "Játékos Hét", "username": "user7" }
+      ],
+      "teamB": [
+        { "goals": 1, "isSubstitute": false, "name": "Játékos Kettő", "username": "user2" },
+        { "goals": 1, "isSubstitute": false, "name": "Játékos Négy", "username": "user4" },
+        { "goals": 1, "isSubstitute": false, "name": "Játékos Hat", "username": "user6" },
+        { "goals": 0, "isSubstitute": false, "name": "Játékos Nyolc", "username": "user8" },
+        { "goals": 0, "isSubstitute": false, "name": "Játékos Kilenc", "username": "user9" }
+      ]
+    }
+  ],
+  "nextMatch": {
+    "attendances": {
+      "admin": {
+        "name": "Admin User",
+        "note": "",
+        "status": "yes"
+      },
+      "user1": {
+        "name": "Játékos Egy",
+        "note": "Késik 10 percet",
+        "status": "yes"
+      },
+      "user2": {
+        "name": "Játékos Kettő",
+        "note": "",
+        "status": "no"
+      }
+    },
+    "courtFee": 18000,
+    "date": "2026. 02. 03.",
+    "endTime": "10:00",
+    "feePerPerson": 1000,
+    "startTime": "09:00"
+  },
+  "transactions": {
+    "user1": [
+      { "amount": -2000, "date": "2026. 01. 01.", "type": "initial" }
+    ],
+    "user2": [
+      { "amount": 3000, "date": "2026. 01. 01.", "type": "initial" }
+    ],
+    "user3": [
+      { "amount": 1000, "date": "2026. 01. 01.", "type": "initial" }
+    ]
+  },
+  "treasury": [
+    {
+      "amount": 15000,
+      "date": "2026. 01. 01.",
+      "note": "Kezdőegyenleg",
+      "type": "income"
+    }
+  ],
+  "users": {
+    "admin": {
+      "admin": "yes",
+      "email": "admin@bdc.com",
+      "name": "Admin User",
+      "username": "admin"
+    },
+    "user1": {
+      "admin": "no",
+      "email": "user1@bdc.com",
+      "name": "Játékos Egy",
+      "username": "user1"
+    },
+    "user2": {
+      "admin": "no",
+      "email": "user2@bdc.com",
+      "name": "Játékos Kettő",
+      "username": "user2"
+    },
+    "user3": {
+      "admin": "no",
+      "email": "user3@bdc.com",
+      "name": "Játékos Három",
+      "username": "user3"
+    },
+    "user4": {
+      "admin": "no",
+      "email": "user4@bdc.com",
+      "name": "Játékos Négy",
+      "username": "user4"
+    },
+    "user5": {
+      "admin": "no",
+      "email": "user5@bdc.com",
+      "name": "Játékos Öt",
+      "username": "user5"
+    }
+  }
+}

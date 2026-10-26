@@ -21,18 +21,36 @@
             <img src="./flex-bdc-logo.png" alt="flex bdc" class="h-28 object-contain mb-2" onerror="this.outerHTML='<div class=\'text-2xl font-black text-gray-900 tracking-wider\'>FLEX BDC FOCI</div>'">
             
             <!-- User Status & Ribbon -->
-            <div id="user-header-info" class="w-full flex justify-between items-center text-xs text-gray-500 mt-2 px-2 border-t border-gray-200 pt-3 hidden">
-                <div class="flex items-center space-x-1.5">
-                    <span>Bejelentkezve mint:</span> 
-                    <strong id="logged-user-name" class="text-gray-800"></strong> 
-                    <button id="open-edit-email-btn" class="text-gray-400 hover:text-gray-700 p-1" title="Email cím szerkesztése">
-                        <i class="fa-solid fa-pen text-[10px]"></i>
-                    </button>
-                    <span id="admin-badge" class="hidden bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ml-1">Admin</span>
+            <div id="user-header-info" class="w-full flex flex-col items-center text-xs text-gray-500 mt-2 px-2 border-t border-gray-200 pt-3 hidden gap-3">
+                <div class="w-full flex justify-between items-center">
+                    <div class="flex items-center space-x-1.5">
+                        <span>Bejelentkezve mint:</span> 
+                        <strong id="logged-user-name" class="text-gray-800"></strong> 
+                        <button id="open-edit-email-btn" class="text-gray-400 hover:text-gray-700 p-1" title="Email cím szerkesztése">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </button>
+                        <span id="admin-badge" class="hidden bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ml-1">Admin</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button id="logout-btn" class="text-red-500 hover:text-red-700 font-medium">
+                            Kijelentkezés <i class="fa-solid fa-right-from-bracket ml-1"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex items-center space-x-3">
-                    <button id="logout-btn" class="text-red-500 hover:text-red-700 font-medium">
-                        Kijelentkezés <i class="fa-solid fa-right-from-bracket ml-1"></i>
+
+                <!-- Menü gombok középre igazítva -->
+                <div id="nav-menu-bar" class="flex items-center justify-center space-x-6 font-medium text-gray-400 pt-1 border-t border-gray-100 w-full hidden">
+                    <button id="nav-tab-matches" class="flex items-center space-x-1.5 hover:text-gray-700 transition py-1 px-3 rounded-lg text-emerald-600 font-bold bg-emerald-50">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <span>Meccsek</span>
+                    </button>
+                    <button id="nav-tab-finances" class="flex items-center space-x-1.5 hover:text-gray-700 transition py-1 px-3 rounded-lg">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span>Pénzügyek</span>
+                    </button>
+                    <button id="nav-tab-standings" class="flex items-center space-x-1.5 hover:text-gray-700 transition py-1 px-3 rounded-lg">
+                        <i class="fa-solid fa-table-list"></i>
+                        <span>Tabella</span>
                     </button>
                 </div>
             </div>
@@ -117,112 +135,199 @@
         <!-- DASHBOARD CONTENT -->
         <div id="dashboard-section" class="hidden space-y-8">
             
-            <!-- ATTENDANCE REGISTRATION CARD -->
-            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center relative">
-                <button id="edit-next-match-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition hidden" title="Meccs időpont szerkesztése">
-                    <i class="fa-solid fa-pen"></i>
-                </button>
+            <!-- 1. MECCSEK TAB NÉZET -->
+            <div id="tab-content-matches" class="space-y-8">
+                <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center relative">
+                    <button id="edit-next-match-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition hidden" title="Meccs időpont szerkesztése">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
 
-                <div class="mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">Következő Meccs</span>
-                    <h3 id="next-match-date-display" class="text-xl sm:text-2xl font-extrabold text-gray-800 mt-2">2026. 10. 27. 09:00 - 10:00</h3>
-                    <p id="next-match-fee-info" class="text-xs text-gray-400 mt-1 flex items-center justify-center space-x-1">
-                        <span>18 000 Ft</span>
-                        <span>•</span>
-                        <span><i class="fa-solid fa-user text-gray-300 mr-0.5"></i> 1 000 Ft / fő</span>
+                    <div class="mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">Következő Meccs</span>
+                        <h3 id="next-match-date-display" class="text-xl sm:text-2xl font-extrabold text-gray-800 mt-2">2026. 10. 27. 09:00 - 10:00</h3>
+                        <p id="next-match-fee-info" class="text-xs text-gray-400 mt-1 flex items-center justify-center space-x-1">
+                            <span>18 000 Ft</span>
+                            <span>•</span>
+                            <span><i class="fa-solid fa-user text-gray-300 mr-0.5"></i> 1 000 Ft / fő</span>
+                        </p>
+                    </div>
+
+                    <div class="flex justify-center my-6">
+                        <div class="tri-slider-container" id="tri-slider">
+                            <div id="slider-thumb" class="tri-slider-thumb pos-mid"></div>
+                            <div class="tri-slider-option text-white drop-shadow" title="Nem leszek ott">
+                                <i class="fa-solid fa-xmark"></i>
+                            </div>
+                            <div class="tri-slider-option text-white drop-shadow" title="Kérdéses">
+                                <i class="fa-solid fa-question"></i>
+                            </div>
+                            <div class="tri-slider-option text-white drop-shadow" title="Ott leszek">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="max-w-xs mx-auto mb-4">
+                        <input type="text" id="user-note" 
+                               placeholder="Megjegyzés írása..." 
+                               class="w-full text-center text-sm px-4 py-2 border-b border-gray-200 focus:border-emerald-500 focus:outline-none text-gray-600 bg-transparent">
+                    </div>
+
+                    <p id="attendance-msg" class="text-xs text-gray-400 font-medium h-5 transition-opacity">
+                        Ha változna a részvételed, kérlek időben jelezd!
                     </p>
-                </div>
+                </section>
 
-                <!-- 3-State Toggle Slider -->
-                <div class="flex justify-center my-6">
-                    <div class="tri-slider-container" id="tri-slider">
-                        <div id="slider-thumb" class="tri-slider-thumb pos-mid"></div>
-                        <div class="tri-slider-option text-white drop-shadow" title="Nem leszek ott">
-                            <i class="fa-solid fa-xmark"></i>
+                <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex flex-col sm:flex-row justify-between items-center pb-4 border-b border-gray-100 mb-4 gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Jelentkezők listája</h3>
+                            <p class="text-xs text-gray-400">Aktuális heti állapot</p>
                         </div>
-                        <div class="tri-slider-option text-white drop-shadow" title="Kérdéses">
-                            <i class="fa-solid fa-question"></i>
-                        </div>
-                        <div class="tri-slider-option text-white drop-shadow" title="Ott leszek">
-                            <i class="fa-solid fa-check"></i>
+
+                        <div id="attending-badge-container" class="border rounded-xl px-4 py-2 text-center transition-colors bg-amber-50 border-amber-100 text-amber-700">
+                            <span class="text-xs font-bold uppercase block">Létszám</span>
+                            <span id="attending-count" class="text-3xl font-black">0</span>
                         </div>
                     </div>
-                </div>
 
-                <div class="max-w-xs mx-auto mb-4">
-                    <input type="text" id="user-note" 
-                           placeholder="Megjegyzés írása..." 
-                           class="w-full text-center text-sm px-4 py-2 border-b border-gray-200 focus:border-emerald-500 focus:outline-none text-gray-600 bg-transparent">
-                </div>
+                    <div id="attendees-list" class="divide-y divide-gray-50 max-h-96 overflow-y-auto pr-1"></div>
 
-                <p id="attendance-msg" class="text-xs text-gray-400 font-medium h-5 transition-opacity">
-                    Ha változna a részvételed, kérlek időben jelezd!
-                </p>
-            </section>
-
-            <!-- ATTENDEES LIST & COUNT -->
-            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div class="flex flex-col sm:flex-row justify-between items-center pb-4 border-b border-gray-100 mb-4 gap-2">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800">Jelentkezők listája</h3>
-                        <p class="text-xs text-gray-400">Aktuális heti állapot</p>
+                    <div id="admin-controls" class="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-2 justify-end hidden">
+                        <button id="add-general-sub-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition shadow-sm">
+                            <i class="fa-solid fa-user-plus mr-1"></i> Beugró hozzáadása
+                        </button>
+                        <button id="open-match-mode-btn" class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl text-xs transition shadow-sm">
+                            <i class="fa-solid fa-soccer-ball mr-1"></i> Meccs Mód
+                        </button>
                     </div>
+                </section>
 
-                    <div id="attending-badge-container" class="border rounded-xl px-4 py-2 text-center transition-colors bg-amber-50 border-amber-100 text-amber-700">
-                        <span class="text-xs font-bold uppercase block">Létszám</span>
-                        <span id="attending-count" class="text-3xl font-black">0</span>
-                    </div>
-                </div>
-
-                <div id="attendees-list" class="divide-y divide-gray-50 max-h-96 overflow-y-auto pr-1">
-                    <!-- Dynamic Rows -->
-                </div>
-
-                <div id="admin-controls" class="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-2 justify-end hidden">
-                    <button id="add-general-sub-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition shadow-sm">
-                        <i class="fa-solid fa-user-plus mr-1"></i> Beugró hozzáadása
-                    </button>
-                    <button id="open-match-mode-btn" class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl text-xs transition shadow-sm">
-                        <i class="fa-solid fa-soccer-ball mr-1"></i> Meccs Mód
-                    </button>
-                </div>
-            </section>
-
-            <!-- PLAYER FINANCES SECTION (Egyenleg) -->
-            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-gray-100 gap-2">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800">Egyenleg</h3>
-                    </div>
-                    <div id="my-balance-badge" class="px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-emerald-50 border-emerald-200 text-emerald-800">
-                        Egyenleged: <span id="my-balance-amount" class="text-base font-black">0 Ft</span>
-                    </div>
-                </div>
-
-                <!-- Lenyitható saját tranzakciók -->
-                <div class="border border-gray-100 rounded-xl overflow-hidden">
-                    <button id="toggle-my-trans-btn" class="w-full flex justify-between items-center p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
-                        <span>Saját Tranzakcióid (Utolsó 3)</span>
-                        <i id="my-trans-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
-                    </button>
-                    <div id="my-transactions-container" class="p-3 bg-white space-y-2 hidden">
-                        <div id="my-transactions-list" class="space-y-2">
-                            <!-- Dynamic Rows -->
+                <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Korábbi Meccsek</h3>
+                        <div id="match-pagination" class="flex items-center space-x-2 hidden">
+                            <button id="prev-match-btn" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-xs transition disabled:opacity-35 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <span id="match-page-indicator" class="text-xs text-gray-500 font-medium">1 / 1</span>
+                            <button id="next-match-btn" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-xs transition disabled:opacity-35 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
                         </div>
                     </div>
-                </div>
+                    <div id="last-matches-container" class="space-y-4"></div>
+                </section>
+            </div>
 
-                <!-- Admin: Játékosok névsora befizetéshez -->
-                <div id="admin-finances-container" class="hidden border-t border-gray-100 pt-4 space-y-4">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-purple-600 flex items-center justify-between">
-                        <span>Játékosok Egyenlege (Befizetéshez kattints)</span>
-                        <span class="text-[10px] font-normal text-gray-400">Elöl a legutóbbi résztvevők</span>
-                    </h4>
-                    <div id="all-users-balances-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-                        <!-- Dynamic User Rows -->
+            <!-- 2. PÉNZÜGYEK TAB NÉZET -->
+            <div id="tab-content-finances" class="space-y-8 hidden">
+                <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-gray-100 gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Egyenleg</h3>
+                        </div>
+                        <div id="my-balance-badge" class="px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-emerald-50 border-emerald-200 text-emerald-800">
+                            Egyenleged: <span id="my-balance-amount" class="text-base font-black">0 Ft</span>
+                        </div>
                     </div>
-                </div>
-            </section>
+
+                    <div class="border border-gray-100 rounded-xl overflow-hidden">
+                        <button id="toggle-my-trans-btn" class="w-full flex justify-between items-center p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
+                            <span>Saját Tranzakcióid (Utolsó 3)</span>
+                            <i id="my-trans-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
+                        </button>
+                        <div id="my-transactions-container" class="p-3 bg-white space-y-2 hidden">
+                            <div id="my-transactions-list" class="space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <div id="admin-finances-container" class="hidden border-t border-gray-100 pt-4 space-y-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-purple-600 flex items-center justify-between">
+                            <span>Játékosok Egyenlege (Befizetéshez kattints)</span>
+                            <span class="text-[10px] font-normal text-gray-400">Elöl a legutóbbi résztvevők</span>
+                        </h4>
+                        <div id="all-users-balances-list" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+                    </div>
+                </section>
+
+                <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-gray-100 gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-vault text-amber-600 mr-2"></i>Csapatkassza</h3>
+                            <p class="text-xs text-gray-400">Teljes kassza egyenleg</p>
+                        </div>
+                        <div id="treasury-balance-badge" class="px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-amber-50 border-amber-200 text-amber-800">
+                            Kassza Egyenleg: <span id="treasury-balance-amount" class="text-base font-black">0 Ft</span>
+                        </div>
+                    </div>
+
+                    <div class="border border-gray-100 rounded-xl overflow-hidden">
+                        <button id="toggle-treasury-btn" class="w-full flex justify-between items-center p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
+                            <span>Kassza Mozgások (Utolsó 3)</span>
+                            <i id="treasury-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
+                        </button>
+                        <div id="treasury-container" class="p-3 bg-white space-y-2 hidden">
+                            <div id="treasury-transactions-list" class="space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <button id="open-treasury-modal-btn" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs transition shadow-sm hidden">
+                            <i class="fa-solid fa-plus mr-1"></i> Kassza Mozgás
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 3. TABELLA TAB NÉZET -->
+            <div id="tab-content-standings" class="space-y-8 hidden">
+                <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Tabella</h3>
+                        <div class="relative">
+                            <button id="year-dropdown-btn" class="text-xs font-semibold px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition flex items-center space-x-1.5">
+                                <span id="selected-year-label">2026</span>
+                                <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                            </button>
+                            <div id="year-dropdown-menu" class="absolute right-0 mt-1 w-24 bg-white border border-gray-200 rounded-xl shadow-lg hidden z-20 py-1">
+                                <button onclick="selectYear(2026)" class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 font-medium">2026</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-500 text-[11px] uppercase font-bold border-b border-gray-100">
+                                <tr>
+                                    <th class="py-3 px-3">#</th>
+                                    <th class="py-3 px-3">Név</th>
+                                    <th class="py-3 px-2 text-center hidden sm:table-cell cursor-help">M</th>
+                                    <th class="py-3 px-2 text-center hidden md:table-cell cursor-help">W</th>
+                                    <th class="py-3 px-2 text-center hidden md:table-cell cursor-help">D</th>
+                                    <th class="py-3 px-2 text-center hidden md:table-cell cursor-help">L</th>
+                                    <th class="py-3 px-2 text-center font-bold text-gray-700 cursor-help">P</th>
+                                    <th class="py-3 px-2 text-center font-bold text-gray-700 cursor-help">G</th>
+                                    <th class="py-3 px-2 text-center hidden lg:table-cell cursor-help">P/M</th>
+                                    <th class="py-3 px-2 text-center hidden lg:table-cell cursor-help">G/M</th>
+                                    <th class="py-3 px-2 text-center cursor-help">GF</th>
+                                    <th class="py-3 px-3 text-center hidden sm:table-cell cursor-help">F</th>
+                                </tr>
+                            </thead>
+                            <tbody id="standings-tbody" class="divide-y divide-gray-50 text-gray-700 font-medium"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Különdíjak & Statisztikák</h3>
+                        <p class="text-xs text-gray-400">Az év eddigi legeredményesebb játékosai és mutatói</p>
+                    </div>
+
+                    <div id="awards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+                </section>
+            </div>
 
             <!-- MATCH RECORDING SECTION -->
             <section id="match-mode-section" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-xl hidden relative">
@@ -232,7 +337,6 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <!-- Team A -->
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
                             <h4 class="font-bold text-emerald-700">A Csapat</h4>
@@ -244,7 +348,6 @@
                         <div id="team-a-players" class="space-y-2 mb-4 min-h-[100px]"></div>
                     </div>
 
-                    <!-- Team B -->
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
                             <div class="bg-white border border-gray-200 px-3 py-1 rounded-full shadow-2xs">
@@ -264,126 +367,18 @@
                     </button>
                 </div>
             </section>
-
-            <!-- LAST MATCHES DISPLAY -->
-            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">Korábbi Meccsek</h3>
-                    <div id="match-pagination" class="flex items-center space-x-2 hidden">
-                        <button id="prev-match-btn" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-xs transition disabled:opacity-35 disabled:cursor-not-allowed">
-                            <i class="fa-solid fa-chevron-left"></i>
-                        </button>
-                        <span id="match-page-indicator" class="text-xs text-gray-500 font-medium">1 / 1</span>
-                        <button id="next-match-btn" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-xs transition disabled:opacity-35 disabled:cursor-not-allowed">
-                            <i class="fa-solid fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </div>
-                <div id="last-matches-container" class="space-y-4">
-                    <!-- Dynamic Match Cards -->
-                </div>
-            </section>
-
-            <!-- STANDINGS TABLE -->
-            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">Tabella</h3>
-                    <div class="relative">
-                        <button id="year-dropdown-btn" class="text-xs font-semibold px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition flex items-center space-x-1.5">
-                            <span id="selected-year-label">2026</span>
-                            <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                        </button>
-                        <div id="year-dropdown-menu" class="absolute right-0 mt-1 w-24 bg-white border border-gray-200 rounded-xl shadow-lg hidden z-20 py-1">
-                            <button onclick="selectYear(2026)" class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 font-medium">2026</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-gray-50 text-gray-500 text-[11px] uppercase font-bold border-b border-gray-100">
-                            <tr>
-                                <th class="py-3 px-3">#</th>
-                                <th class="py-3 px-3">Név</th>
-                                <th class="py-3 px-2 text-center hidden sm:table-cell cursor-help" title="M: meccs">M</th>
-                                <th class="py-3 px-2 text-center hidden md:table-cell cursor-help" title="W: győzelem">W</th>
-                                <th class="py-3 px-2 text-center hidden md:table-cell cursor-help" title="D: döntetlen">D</th>
-                                <th class="py-3 px-2 text-center hidden md:table-cell cursor-help" title="L: vereség">L</th>
-                                <th class="py-3 px-2 text-center font-bold text-gray-700 cursor-help" title="P: pont">P</th>
-                                <th class="py-3 px-2 text-center font-bold text-gray-700 cursor-help" title="G: gól">G</th>
-                                <th class="py-3 px-2 text-center hidden lg:table-cell cursor-help" title="P/M: pontátlag">P/M</th>
-                                <th class="py-3 px-2 text-center hidden lg:table-cell cursor-help" title="G/M: gólátlag">G/M</th>
-                                <th class="py-3 px-2 text-center cursor-help" title="GF: sorozat">GF</th>
-                                <th class="py-3 px-3 text-center hidden sm:table-cell cursor-help" title="F: forma">F</th>
-                            </tr>
-                        </thead>
-                        <tbody id="standings-tbody" class="divide-y divide-gray-50 text-gray-700 font-medium">
-                            <!-- Dynamic Table Rows -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- CSAPATKASSA SZEKCIÓ (Lenyitható tranzakciókkal) -->
-            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-gray-100 gap-2">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-vault text-amber-600 mr-2"></i>Csapatkassza</h3>
-                        <p class="text-xs text-gray-400">Teljes kassza egyenleg</p>
-                    </div>
-                    <div id="treasury-balance-badge" class="px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-amber-50 border-amber-200 text-amber-800">
-                        Kassza Egyenleg: <span id="treasury-balance-amount" class="text-base font-black">0 Ft</span>
-                    </div>
-                </div>
-
-                <!-- Lenyitható kassza mozgások -->
-                <div class="border border-gray-100 rounded-xl overflow-hidden">
-                    <button id="toggle-treasury-btn" class="w-full flex justify-between items-center p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
-                        <span>Kassza Mozgások (Utolsó 3)</span>
-                        <i id="treasury-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
-                    </button>
-                    <div id="treasury-container" class="p-3 bg-white space-y-2 hidden">
-                        <div id="treasury-transactions-list" class="space-y-2">
-                            <!-- Dynamic Treasury Rows -->
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex justify-end pt-2">
-                    <button id="open-treasury-modal-btn" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs transition shadow-sm hidden">
-                        <i class="fa-solid fa-plus mr-1"></i> Kassza Mozgás
-                    </button>
-                </div>
-            </section>
-
-            <!-- KÜLÖNDÍJAK & STATISZTIKÁK SZEKCIÓ -->
-            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div class="mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">Különdíjak & Statisztikák</h3>
-                    <p class="text-xs text-gray-400">Az év eddigi legeredményesebb játékosai és mutatói</p>
-                </div>
-
-                <div id="awards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <!-- Dinamikusan feltöltött kártyák -->
-                </div>
-            </section>
-
         </div>
     </main>
 
-    <!-- ADMIN BEFIZETÉS MODAL (Törölhető utolsó 3 tranzakcióval) -->
+    <!-- MODALS -->
     <div id="payment-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-gray-100 space-y-4">
             <h3 id="modal-user-name" class="text-lg font-bold text-gray-800">Befizetés rögzítése</h3>
             <div class="text-xs text-gray-500">Jelenlegi egyenleg: <strong id="modal-user-balance" class="text-sm text-gray-800">0 Ft</strong></div>
-            
             <div class="border-t border-gray-100 pt-3">
                 <span class="text-[11px] font-bold uppercase text-gray-400 block mb-2">Utolsó 3 tranzakciója (Törölhető)</span>
-                <div id="modal-user-last-trans" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    <!-- Dinamikus sorok törlés gombbal -->
-                </div>
+                <div id="modal-user-last-trans" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
             </div>
-
             <div class="border-t border-gray-100 pt-3 space-y-3">
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tranzakció Típusa</label>
@@ -392,7 +387,6 @@
                         <option value="initial">Kezdőegyenleg (initial)</option>
                     </select>
                 </div>
-
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Összeg (Ft)</label>
                     <div class="flex items-center space-x-2">
@@ -402,7 +396,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="flex space-x-2 pt-2">
                 <button id="close-payment-modal-btn" type="button" class="w-1/2 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">Mégse</button>
                 <button id="save-payment-btn" type="button" class="w-1/2 py-2.5 bg-emerald-600 text-white font-semibold rounded-xl text-sm hover:bg-emerald-700 transition">Könyvelés</button>
@@ -410,11 +403,9 @@
         </div>
     </div>
 
-    <!-- EMAIL MÓDOSÍTÁS MODAL -->
     <div id="edit-email-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-gray-100 space-y-4">
             <h3 class="text-lg font-bold text-gray-800">Email cím szerkesztése</h3>
-            
             <form id="edit-email-form" class="space-y-4">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -426,41 +417,29 @@
                         <input type="text" id="edit-firstname" disabled class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 text-sm cursor-not-allowed">
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-xs font-semibold text-emerald-600 uppercase mb-1">Email cím (szerkeszthető)</label>
                     <input type="email" id="edit-email" required class="w-full px-3 py-2.5 rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-emerald-50/30">
                 </div>
-
                 <div>
                     <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Felhasználónév</label>
                     <input type="text" id="edit-username" disabled class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 text-sm cursor-not-allowed">
                 </div>
-
                 <div class="flex space-x-3 pt-2">
-                    <button type="button" id="close-edit-email-btn" class="w-1/2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition">
-                        Mégse
-                    </button>
-                    <button type="submit" class="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition">
-                        Mentés
-                    </button>
+                    <button type="button" id="close-edit-email-btn" class="w-1/2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition">Mégse</button>
+                    <button type="submit" class="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition">Mentés</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ADMIN KASSZA MOZGÁS MODAL (Utolsó 3 törölhető mozgással) -->
     <div id="treasury-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-gray-100 space-y-4">
             <h3 class="text-lg font-bold text-gray-800">Csapatkassza Mozgások & Új Rögzítés</h3>
-            
             <div>
                 <span class="text-[11px] font-bold uppercase text-gray-400 block mb-2">Utolsó 3 mozgás (Törölhető)</span>
-                <div id="modal-treasury-last-trans" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    <!-- Dinamikus sorok törlés gombbal -->
-                </div>
+                <div id="modal-treasury-last-trans" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
             </div>
-
             <div class="border-t border-gray-100 pt-3 space-y-3">
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Típus</label>
@@ -469,18 +448,15 @@
                         <option value="expense">Kiadás (Expense / Felszerelés / Pálya)</option>
                     </select>
                 </div>
-
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Összeg (Ft)</label>
                     <input type="number" id="treasury-amount-input" value="10000" step="1000" class="w-full px-3 py-2 rounded-xl border text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
-
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Megjegyzés (Note)</label>
                     <input type="text" id="treasury-note-input" placeholder="pl. Céges támogatás vagy Labda vásárlás" class="w-full px-3 py-2 rounded-xl border text-sm">
                 </div>
             </div>
-
             <div class="flex space-x-2 pt-2">
                 <button id="close-treasury-modal-btn" type="button" class="w-1/2 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">Mégse</button>
                 <button id="save-treasury-btn" type="button" class="w-1/2 py-2.5 bg-amber-600 text-white font-semibold rounded-xl text-sm hover:bg-amber-700 transition">Könyvelés</button>
@@ -488,7 +464,6 @@
         </div>
     </div>
 
-    <!-- EDIT NEXT MATCH DATE MODAL -->
     <div id="edit-date-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-gray-100 space-y-4">
             <h3 class="text-lg font-bold text-gray-800">Következő meccs beállításai</h3>
@@ -529,7 +504,7 @@
         <span id="toast-msg">Sikeres művelet!</span>
     </div>
 
-    <!-- FIREBASE INITIALIZATION & MODULE BRIDGE -->
+    <!-- FIREBASE INIT IN HTML -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -547,15 +522,12 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        window.FB = {
-            db,
-            ref,
-            set,
-            onValue
-        };
+        window.FB = { db, ref, set, onValue };
     </script>
 
-    <!-- Application Logic -->
-    <script src="app.js"></script>
+    <!-- SCRIPTS -->
+    <script src="config-and-state.js"></script>
+    <script src="ui-and-modals.js"></script>
+    <script src="app-logic.js"></script>
 </body>
 </html>
