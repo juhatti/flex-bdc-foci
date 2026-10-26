@@ -4,242 +4,308 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>flex bdc foci</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            green: '#22c55e',
-                            red: '#ef4444',
-                            yellow: '#eab308',
-                            dark: '#0f172a'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .slider-bg-red { background-color: #fef2f2; border-color: #fca5a5; }
-        .slider-bg-yellow { background-color: #fefce8; border-color: #fde047; }
-        .slider-bg-green { background-color: #f0fdf4; border-color: #86efac; }
-    </style>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-slate-100 min-h-screen font-sans text-slate-800 pb-12">
+<body class="min-h-screen pb-12">
 
-    <!-- Auth View -->
-    <div id="auth-view" class="max-w-md mx-auto mt-12 p-6 bg-white rounded-2xl shadow-xl border border-slate-200">
-        <div class="text-center mb-6">
-            <img src="./flex-bdc-logo.png" alt="flex bdc" class="h-24 mx-auto mb-4 object-contain" onerror="this.src='https://via.placeholder.com/150x80?text=flex+bdc'">
-        </div>
-        
-        <form id="login-form" class="space-y-4">
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Felhasználónév</label>
-                <input type="text" id="login-username" autocomplete="off" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 transition" placeholder="Írd be a felhasználóneved...">
-            </div>
+    <!-- Header & Logo Section -->
+    <header class="py-6 mb-6">
+        <div class="max-w-4xl mx-auto px-4 flex flex-col items-center relative">
+            <img src="./flex-bdc-logo.png" alt="flex bdc" class="h-28 object-contain mb-2" onerror="this.outerHTML='<div class=\'text-2xl font-black text-gray-900 tracking-wider\'>FLEX BDC FOCI</div>'">
             
-            <div id="password-group" class="hidden">
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Admin Jelszó</label>
-                <input type="password" id="login-password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 transition" placeholder="Jelszó">
-            </div>
-
-            <button type="submit" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow transition">Belépés</button>
-        </form>
-
-        <form id="register-form" class="space-y-4 hidden mt-4 pt-4 border-t border-slate-200">
-            <div class="grid grid-cols-2 gap-2">
+            <!-- User Status & Ribbon -->
+            <div id="user-header-info" class="w-full flex justify-between items-center text-xs text-gray-500 mt-2 px-2 border-t border-gray-200 pt-3 hidden">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Vezetéknév</label>
-                    <input type="text" id="reg-lastname" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+                    Bejelentkezve mint: <strong id="logged-user-name" class="text-gray-800"></strong> 
+                    <span id="admin-badge" class="hidden bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ml-1">Admin</span>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Keresztnév</label>
-                    <input type="text" id="reg-firstname" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+                <div class="flex items-center space-x-3">
+                    <button id="logout-btn" class="text-red-500 hover:text-red-700 font-medium">
+                        Kijelentkezés <i class="fa-solid fa-right-from-bracket ml-1"></i>
+                    </button>
                 </div>
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">E-mail cím</label>
-                <input type="email" id="reg-email" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Választott felhasználónév</label>
-                <input type="text" id="reg-username" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
-            </div>
-            <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition text-sm">Regisztráció befejezése</button>
-        </form>
-
-        <div class="mt-4 text-center">
-            <button id="toggle-auth-btn" class="text-xs text-slate-500 hover:underline">Nincs még fiókod? Regisztráció</button>
-        </div>
-    </div>
-
-    <!-- App View -->
-    <div id="app-view" class="max-w-3xl mx-auto px-4 pt-6 hidden">
-        <!-- Header / Logo -->
-        <div class="flex flex-col items-center justify-center mb-6 relative">
-            <img src="./flex-bdc-logo.png" alt="flex bdc" class="h-28 object-contain mb-2" onerror="this.src='https://via.placeholder.com/200x90?text=flex+bdc'">
-            <div class="absolute right-0 top-0 flex items-center space-x-2">
-                <span id="user-badge" class="text-xs font-bold bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full"></span>
-                <button id="logout-btn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full border border-slate-300 transition">Kijelentkezés</button>
             </div>
         </div>
+    </header>
 
-        <!-- Next Match Card -->
-        <div class="bg-white rounded-3xl shadow-lg border border-slate-200 p-6 mb-8 relative">
-            <button id="edit-next-match-btn" class="hidden absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2 rounded-full hover:bg-slate-100 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-            </button>
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-4 space-y-8">
 
-            <div class="text-center mb-6">
-                <div id="match-date-display" class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">2026. 10. 27. 09:00 - 10:00</div>
+        <!-- LOGIN SCREEN -->
+        <section id="auth-section" class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 max-w-md mx-auto">
+            <h2 class="text-xl font-bold text-center text-gray-800 mb-6">Belépés</h2>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Felhasználónév</label>
+                    <input type="text" id="login-username" required 
+                           placeholder="pl. juhatti" 
+                           class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-800">
+                </div>
+
+                <div id="admin-pass-container" class="hidden space-y-1">
+                    <label class="block text-xs font-semibold text-amber-600 uppercase">Admin Jelszó</label>
+                    <input type="password" id="login-password" 
+                           placeholder="••••••••" 
+                           class="w-full px-4 py-3 rounded-xl border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-800 bg-amber-50/30">
+                </div>
+
+                <button type="submit" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition shadow-sm">
+                    Belépés
+                </button>
+            </form>
+
+            <div class="mt-6 pt-6 border-t border-gray-100 text-center">
+                <p class="text-sm text-gray-500">Még nincs fiókod?</p>
+                <button id="go-to-register" class="mt-2 text-sm text-emerald-600 font-semibold hover:underline">
+                    Új játékos regisztrációja
+                </button>
             </div>
+        </section>
 
-            <!-- Attendance Controls -->
-            <div class="max-w-md mx-auto bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-6">
-                <div class="text-center text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Részvételed állapota</div>
-                
-                <!-- 3-State Slider -->
-                <div id="slider-container" class="relative w-full h-16 rounded-2xl border-2 flex items-center justify-between px-2 cursor-pointer select-none transition-colors duration-200 slider-bg-yellow">
-                    <button data-val="no" class="slider-opt w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl transition-all text-slate-400 hover:text-red-500">✕</button>
-                    <button data-val="maybe" class="slider-opt w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl transition-all text-yellow-600">?</button>
-                    <button data-val="yes" class="slider-opt w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl transition-all text-slate-400 hover:text-emerald-500">✓</button>
+        <!-- REGISTER SCREEN -->
+        <section id="register-section" class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 max-w-md mx-auto hidden">
+            <h2 class="text-xl font-bold text-center text-gray-800 mb-6">Új Játékos Regisztráció</h2>
+            
+            <form id="register-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Vezetéknév</label>
+                        <input type="text" id="reg-lastname" required placeholder="Juhász" 
+                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Keresztnév</label>
+                        <input type="text" id="reg-firstname" required placeholder="Attila" 
+                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                    </div>
                 </div>
 
-                <div class="mt-3">
-                    <input type="text" id="user-note" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" placeholder="Megjegyzés (pl. kicsit fáj a lábam)...">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email cím</label>
+                    <input type="email" id="reg-email" required placeholder="juhatti@gmail.com" 
+                           class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
                 </div>
 
-                <div id="attendance-status-msg" class="text-center text-xs text-slate-400 mt-3 font-medium hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Felhasználónév (egyedi)</label>
+                    <input type="text" id="reg-username" required placeholder="juhatti" 
+                           class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                </div>
+
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" id="go-to-login" class="w-1/2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition">
+                        Mégse
+                    </button>
+                    <button type="submit" class="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition">
+                        Regisztráció
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- DASHBOARD CONTENT -->
+        <div id="dashboard-section" class="hidden space-y-8">
+            
+            <!-- ATTENDANCE REGISTRATION CARD -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center relative">
+                <button id="edit-next-match-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition hidden" title="Meccs időpont szerkesztése">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+
+                <div class="mb-4">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">Következő Meccs</span>
+                    <h3 id="next-match-date-display" class="text-xl sm:text-2xl font-extrabold text-gray-800 mt-2">2026. 10. 27. 09:00 - 10:00</h3>
+                </div>
+
+                <!-- 3-State Toggle Slider -->
+                <div class="flex justify-center my-6">
+                    <div class="tri-slider-container" id="tri-slider">
+                        <div id="slider-thumb" class="tri-slider-thumb pos-mid"></div>
+                        <div class="tri-slider-option text-white drop-shadow" title="Nem leszek ott">
+                            <i class="fa-solid fa-xmark"></i>
+                        </div>
+                        <div class="tri-slider-option text-white drop-shadow" title="Kérdéses">
+                            <i class="fa-solid fa-question"></i>
+                        </div>
+                        <div class="tri-slider-option text-white drop-shadow" title="Ott leszek">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="max-w-xs mx-auto mb-4">
+                    <input type="text" id="user-note" 
+                           placeholder="Megjegyzés (pl. kicsit fáj a lábam)" 
+                           class="w-full text-center text-sm px-4 py-2 border-b border-gray-200 focus:border-emerald-500 focus:outline-none text-gray-600 bg-transparent">
+                </div>
+
+                <p id="attendance-msg" class="text-xs text-gray-400 font-medium h-5 transition-opacity">
                     Köszi a jelentkezést! Ha változna a részvételed, kérlek időben jelezd!
-                </div>
-            </div>
+                </p>
+            </section>
 
-            <!-- Attendees Header & Count -->
-            <div class="flex items-center justify-between border-t border-slate-100 pt-6 px-2 mb-4">
-                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Jelentkezők</h3>
-                <div id="attendee-badge" class="px-4 py-1.5 rounded-full font-black text-lg transition-colors bg-amber-100 text-amber-700">
-                    Létszám: <span id="attendee-count">0</span>
-                </div>
-            </div>
+            <!-- ATTENDEES LIST & COUNT -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex flex-col sm:flex-row justify-between items-center pb-4 border-b border-gray-100 mb-4 gap-2">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">Jelentkezők listája</h3>
+                        <p class="text-xs text-gray-400">Aktuális heti állapot</p>
+                    </div>
 
-            <!-- Attendees List -->
-            <div id="attendees-list" class="space-y-2 mb-4 max-h-80 overflow-y-auto pr-1">
-                <!-- Rendered dynamically -->
-            </div>
-
-            <!-- Admin Mode Toggle Button -->
-            <div id="admin-match-btn-container" class="hidden text-center border-t border-slate-100 pt-4">
-                <button id="toggle-match-mode-btn" class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow text-sm transition">
-                    ⚽ Meccs mód
-                </button>
-            </div>
-        </div>
-
-        <!-- Meccs Mód Panel (Admin only) -->
-        <div id="match-mode-panel" class="hidden bg-slate-900 text-white rounded-3xl p-6 mb-8 shadow-2xl relative">
-            <h3 class="text-lg font-bold mb-4 flex items-center justify-between">
-                <span>⚽ Meccs Rögzítése & Csapatok</span>
-                <button id="close-match-mode-btn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg">Bezárás</button>
-            </h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- Team A -->
-                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-                    <h4 class="font-bold text-emerald-400 mb-3 text-center border-b border-slate-700 pb-2">A Csapat</h4>
-                    <div id="team-a-players" class="space-y-2 mb-4 min-h-[100px]"></div>
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-700">
-                        <span class="text-xs text-slate-400">Gólok száma:</span>
-                        <input type="number" id="team-a-score" value="0" min="0" class="w-16 px-2 py-1 bg-slate-900 text-center font-bold text-lg rounded border border-slate-600">
+                    <div id="attending-badge-container" class="border rounded-xl px-4 py-2 text-center transition-colors bg-amber-50 border-amber-100 text-amber-700">
+                        <span class="text-xs font-bold uppercase block">Létszám</span>
+                        <span id="attending-count" class="text-3xl font-black">0</span>
                     </div>
                 </div>
 
-                <!-- Team B -->
-                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-                    <h4 class="font-bold text-indigo-400 mb-3 text-center border-b border-slate-700 pb-2">B Csapat</h4>
-                    <div id="team-b-players" class="space-y-2 mb-4 min-h-[100px]"></div>
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-700">
-                        <span class="text-xs text-slate-400">Gólok száma:</span>
-                        <input type="number" id="team-b-score" value="0" min="0" class="w-16 px-2 py-1 bg-slate-900 text-center font-bold text-lg rounded border border-slate-600">
+                <div id="attendees-list" class="divide-y divide-gray-50 max-h-96 overflow-y-auto pr-1">
+                    <!-- Dynamic Rows -->
+                </div>
+
+                <div id="admin-controls" class="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-2 justify-end hidden">
+                    <button id="open-match-mode-btn" class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl text-xs transition shadow-sm">
+                        <i class="fa-solid fa-soccer-ball mr-1"></i> Meccs Mód
+                    </button>
+                </div>
+            </section>
+
+            <!-- MATCH RECORDING SECTION -->
+            <section id="match-mode-section" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-xl hidden relative">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                    <h3 class="text-lg font-bold text-gray-900"><i class="fa-solid fa-sliders text-emerald-600 mr-2"></i>Meccs Rögzítése & Csapatok</h3>
+                    <button id="close-match-mode-btn" class="text-xs text-gray-500 hover:text-gray-900 bg-gray-100 px-3 py-1.5 rounded-lg">Bezárás</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Team A -->
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
+                            <h4 class="font-bold text-emerald-700">A Csapat</h4>
+                            <span class="text-xs font-semibold text-gray-500">Gólok: <strong id="team-a-score" class="text-base text-gray-900">0</strong></span>
+                        </div>
+                        <div id="team-a-players" class="space-y-2 mb-4 min-h-[100px]"></div>
+                        <button id="add-sub-a-btn" class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-xs border border-emerald-200 transition">
+                            + Beugró hozzáadása A csapathoz
+                        </button>
+                    </div>
+
+                    <!-- Team B -->
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
+                            <h4 class="font-bold text-indigo-700">B Csapat</h4>
+                            <span class="text-xs font-semibold text-gray-500">Gólok: <strong id="team-b-score" class="text-base text-gray-900">0</strong></span>
+                        </div>
+                        <div id="team-b-players" class="space-y-2 mb-4 min-h-[100px]"></div>
+                        <button id="add-sub-b-btn" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg text-xs border border-indigo-200 transition">
+                            + Beugró hozzáadása B csapathoz
+                        </button>
                     </div>
                 </div>
-            </div>
 
-            <div class="flex items-center justify-between pt-4 border-t border-slate-800">
-                <span id="match-mode-date-label" class="text-xs text-slate-400">Dátum: 2026. 10. 27.</span>
-                <button id="save-match-results-btn" class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl shadow transition text-sm">
-                    Eredmény Mentése
-                </button>
-            </div>
+                <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                    <span id="match-mode-date-label" class="text-xs text-gray-500">Dátum: 2026. 10. 27.</span>
+                    <button id="save-match-results-btn" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm transition shadow-sm">
+                        Eredmény Mentése
+                    </button>
+                </div>
+            </section>
+
+            <!-- LAST MATCHES DISPLAY -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Korábbi Meccsek</h3>
+                    <div id="match-pagination" class="flex items-center space-x-2 hidden">
+                        <button id="prev-match-btn" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-xs transition disabled:opacity-35 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <span id="match-page-indicator" class="text-xs text-gray-500 font-medium">1 / 1</span>
+                        <button id="next-match-btn" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-xs transition disabled:opacity-35 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="last-matches-container" class="space-y-4">
+                    <!-- Dynamic Match Cards -->
+                </div>
+            </section>
+
+            <!-- STANDINGS TABLE -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Tabella 2026</h3>
+                    <span class="text-xs text-gray-400">Automatikus statisztika</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-[11px] uppercase font-bold border-b border-gray-100">
+                            <tr>
+                                <th class="py-3 px-3">#</th>
+                                <th class="py-3 px-3">Név</th>
+                                <th class="py-3 px-2 text-center">M</th>
+                                <th class="py-3 px-2 text-center">W</th>
+                                <th class="py-3 px-2 text-center">D</th>
+                                <th class="py-3 px-2 text-center">L</th>
+                                <th class="py-3 px-2 text-center font-bold text-gray-700">P</th>
+                                <th class="py-3 px-2 text-center">G</th>
+                                <th class="py-3 px-2 text-center">P/M</th>
+                                <th class="py-3 px-2 text-center">G/M</th>
+                                <th class="py-3 px-3 text-center">F</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standings-tbody" class="divide-y divide-gray-50 text-gray-700 font-medium">
+                            <!-- Dynamic Table Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </div>
+    </main>
 
-        <!-- Last 3 Matches -->
-        <div class="bg-white rounded-3xl shadow-lg border border-slate-200 p-6 mb-8">
-            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Utolsó 3 Meccs</h3>
-            <div id="recent-matches-list" class="space-y-4">
-                <!-- Rendered dynamically -->
-            </div>
-        </div>
-
-        <!-- Tabella (Standings) -->
-        <div class="bg-white rounded-3xl shadow-lg border border-slate-200 p-6 overflow-hidden">
-            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Tabella</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-200 text-xs text-slate-400 uppercase">
-                            <th class="py-2 px-2">#</th>
-                            <th class="py-2 px-2">Név</th>
-                            <th class="py-2 px-2 text-center">M</th>
-                            <th class="py-2 px-2 text-center">W</th>
-                            <th class="py-2 px-2 text-center">D</th>
-                            <th class="py-2 px-2 text-center">L</th>
-                            <th class="py-2 px-2 text-center font-bold text-slate-700">P</th>
-                            <th class="py-2 px-2 text-center">G</th>
-                            <th class="py-2 px-2 text-center">P/M</th>
-                            <th class="py-2 px-2 text-center">G/M</th>
-                            <th class="py-2 px-2 text-center">F</th>
-                        </tr>
-                    </thead>
-                    <tbody id="standings-body" class="divide-y divide-slate-100">
-                        <!-- Rendered dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Next Match Date Modal -->
-    <div id="edit-date-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center hidden z-50">
-        <div class="bg-white p-6 rounded-2xl max-w-sm w-full shadow-2xl space-y-4">
-            <h4 class="font-bold text-lg text-slate-800">Következő meccs időpontja</h4>
+    <!-- EDIT NEXT MATCH DATE MODAL -->
+    <div id="edit-date-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-gray-100 space-y-4">
+            <h3 class="text-lg font-bold text-gray-800">Következő meccs időpontja</h3>
             <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Dátum</label>
-                <input type="date" id="edit-match-date" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+                <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Dátum</label>
+                <input type="date" id="modal-match-date" class="w-full px-3 py-2 rounded-xl border text-sm">
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Kezdés</label>
-                    <input type="time" id="edit-match-start" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Kezdés</label>
+                    <input type="time" id="modal-match-start" class="w-full px-3 py-2 rounded-xl border text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Vég</label>
-                    <input type="time" id="edit-match-end" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Vég</label>
+                    <input type="time" id="modal-match-end" class="w-full px-3 py-2 rounded-xl border text-sm">
                 </div>
             </div>
-            <div class="flex justify-end space-x-2 pt-2">
-                <button id="cancel-date-btn" class="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-xl">Mégse</button>
-                <button id="save-date-btn" class="px-4 py-2 text-sm bg-slate-900 text-white font-bold rounded-xl">Mentés</button>
+            <div class="flex space-x-2 pt-2">
+                <button id="close-date-modal-btn" class="w-1/2 py-2 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">Mégse</button>
+                <button id="save-date-modal-btn" class="w-1/2 py-2 bg-gray-900 text-white font-semibold rounded-xl text-sm">Mentés</button>
             </div>
         </div>
     </div>
 
-    <!-- App Logic -->
+    <!-- UI TOAST -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white text-xs px-4 py-3 rounded-xl shadow-lg transition transform translate-y-20 opacity-0 pointer-events-none z-50 flex items-center space-x-2">
+        <i class="fa-solid fa-circle-info text-emerald-400"></i>
+        <span id="toast-msg">Sikeres művelet!</span>
+    </div>
+
+    <!-- FIREBASE INITIALIZATION & MODULE BRIDGE -->
     <script type="module">
-        import { initializeApp } from "https://esm.sh/firebase@10.7.1/app";
-        import { getDatabase, ref, set, get, onValue, update } from "https://esm.sh/firebase@10.7.1/database";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBy-e4SGpdoAFDdk9goKyQySe6CvqsFDz4",
@@ -254,505 +320,16 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // State
-        let currentUser = null;
-        let usersData = {};
-        let nextMatchData = { date: "2026. 10. 27.", startTime: "09:00", endTime: "10:00", attendances: {} };
-        let matchesData = [];
-        let editingMatchId = null;
-
-        // Init App & Listeners
-        window.addEventListener('DOMContentLoaded', () => {
-            initFirebaseListeners();
-            setupAuthEvents();
-            setupMatchEvents();
-            checkAutoLogin();
-        });
-
-        function checkAutoLogin() {
-            const savedUser = localStorage.getItem('flex_foci_user');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                showApp();
-            }
-        }
-
-        function initFirebaseListeners() {
-            onValue(ref(db, 'users'), (snapshot) => {
-                usersData = snapshot.val() || {};
-                renderAll();
-            });
-
-            onValue(ref(db, 'nextMatch'), (snapshot) => {
-                const val = snapshot.val();
-                if (val) {
-                    nextMatchData = val;
-                    if (!nextMatchData.attendances) nextMatchData.attendances = {};
-                }
-                renderAll();
-            });
-
-            onValue(ref(db, 'matches'), (snapshot) => {
-                const val = snapshot.val();
-                matchesData = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
-                renderAll();
-            });
-        }
-
-        function setupAuthEvents() {
-            const usernameInput = document.getElementById('login-username');
-            const passGroup = document.getElementById('password-group');
-
-            usernameInput.addEventListener('input', (e) => {
-                if (e.target.value.trim().toLowerCase() === 'admin') {
-                    passGroup.classList.remove('hidden');
-                } else {
-                    passGroup.classList.add('hidden');
-                }
-            });
-
-            document.getElementById('login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const uname = usernameInput.value.trim().toLowerCase();
-                const pass = document.getElementById('login-password').value;
-
-                if (uname === 'admin') {
-                    if (pass === 'arsenal') {
-                        currentUser = { username: 'admin', name: 'Juhász Attila (Admin)', admin: true };
-                        saveSession();
-                    } else {
-                        alert('Hibás admin jelszó!');
-                    }
-                    return;
-                }
-
-                if (usersData[uname]) {
-                    currentUser = usersData[uname];
-                    saveSession();
-                } else {
-                    alert('Ismeretlen felhasználó!');
-                }
-            });
-
-            document.getElementById('toggle-auth-btn').addEventListener('click', () => {
-                const regForm = document.getElementById('register-form');
-                regForm.classList.toggle('hidden');
-            });
-
-            document.getElementById('register-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const uname = document.getElementById('reg-username').value.trim().toLowerCase();
-                const fname = document.getElementById('reg-firstname').value.trim();
-                const lname = document.getElementById('reg-lastname').value.trim();
-                const email = document.getElementById('reg-email').value.trim();
-
-                const newUser = {
-                    username: uname,
-                    name: `${lname} ${fname}`,
-                    email: email,
-                    admin: uname === 'juhatti' ? 'yes' : 'no'
-                };
-
-                set(ref(db, `users/${uname}`), newUser);
-                currentUser = newUser;
-                saveSession();
-            });
-
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                localStorage.removeItem('flex_foci_user');
-                currentUser = null;
-                document.getElementById('auth-view').classList.remove('hidden');
-                document.getElementById('app-view').classList.add('hidden');
-            });
-        }
-
-        function saveSession() {
-            localStorage.setItem('flex_foci_user', JSON.stringify(currentUser));
-            showApp();
-        }
-
-        function showApp() {
-            document.getElementById('auth-view').classList.add('hidden');
-            document.getElementById('app-view').classList.remove('hidden');
-            document.getElementById('user-badge').innerText = currentUser.name;
-            
-            const isAdmin = currentUser.admin === true || currentUser.admin === 'yes' || currentUser.username === 'juhatti' || currentUser.username === 'admin';
-            if (isAdmin) {
-                document.getElementById('admin-match-btn-container').classList.remove('hidden');
-                document.getElementById('edit-next-match-btn').classList.remove('hidden');
-            } else {
-                document.getElementById('admin-match-btn-container').classList.add('hidden');
-                document.getElementById('edit-next-match-btn').classList.add('hidden');
-            }
-            renderAll();
-        }
-
-        // Attendance Slider Interactions
-        const sliderContainer = document.getElementById('slider-container');
-        const userNoteInput = document.getElementById('user-note');
-
-        sliderContainer.addEventListener('click', (e) => {
-            const btn = e.target.closest('.slider-opt');
-            if (!btn || !currentUser) return;
-            const val = btn.dataset.val;
-            updateAttendance(val, userNoteInput.value);
-        });
-
-        userNoteInput.addEventListener('change', () => {
-            if (!currentUser) return;
-            const currentAtt = nextMatchData.attendances[currentUser.username]?.status || 'maybe';
-            updateAttendance(currentAtt, userNoteInput.value);
-        });
-
-        function updateAttendance(status, note) {
-            set(ref(db, `nextMatch/attendances/${currentUser.username}`), {
-                status: status,
-                note: note || '',
-                name: currentUser.name
-            });
-            document.getElementById('attendance-status-msg').classList.remove('hidden');
-        }
-
-        // Name Shortener Helper (handles Hungarian double consonants)
-        function formatShortName(fullName) {
-            if (!fullName) return '';
-            const parts = fullName.trim().split(' ');
-            if (parts.length < 2) return fullName;
-            
-            const lastName = parts[0];
-            const firstName = parts.slice(1).join(' ');
-            
-            const doubleConsonants = ['cs', 'dz', 'gy', 'ly', 'ny', 'sz', 'ty', 'zs'];
-            const lowerLast = lastName.toLowerCase();
-            
-            let prefix = lastName.charAt(0);
-            if (lowerLast.length >= 2 && doubleConsonants.includes(lowerLast.substring(0, 2))) {
-                prefix = lastName.substring(0, 2);
-                prefix = prefix.charAt(0).toUpperCase() + prefix.charAt(1).toLowerCase();
-            }
-            return `${prefix}. ${firstName}`;
-        }
-
-        function renderAll() {
-            if (!currentUser) return;
-
-            // Render Next Match Info
-            document.getElementById('match-date-display').innerText = `${nextMatchData.date} ${nextMatchData.startTime} - ${nextMatchData.endTime}`;
-
-            // Render Slider Status
-            const myAtt = nextMatchData.attendances[currentUser.username] || { status: 'maybe', note: '' };
-            sliderContainer.className = `relative w-full h-16 rounded-2xl border-2 flex items-center justify-between px-2 cursor-pointer select-none transition-colors duration-200 slider-bg-${myAtt.status === 'yes' ? 'green' : (myAtt.status === 'no' ? 'red' : 'yellow')}`;
-            userNoteInput.value = myAtt.note || '';
-
-            // Render Attendees List
-            const attendeesList = document.getElementById('attendees-list');
-            attendeesList.innerHTML = '';
-            
-            let yesCount = 0;
-            const attEntries = Object.entries(nextMatchData.attendances || {});
-
-            attEntries.forEach(([uname, data], index) => {
-                if (data.status === 'yes') yesCount++;
-                
-                const item = document.createElement('div');
-                item.className = 'flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm';
-                
-                const icon = data.status === 'yes' ? '<span class="text-emerald-600 font-bold">✓</span>' : (data.status === 'no' ? '<span class="text-red-500 font-bold">✕</span>' : '<span class="text-yellow-600 font-bold">?</span>');
-                
-                item.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <span class="text-xs text-slate-400 w-4 font-mono">${index + 1}</span>
-                        <span class="font-medium text-slate-700">${formatShortName(data.name || uname)}</span>
-                        ${data.note ? `<span class="text-xs text-slate-400 italic">("${data.note}")</span>` : ''}
-                    </div>
-                    <div>${icon}</div>
-                `;
-                attendeesList.appendChild(item);
-            });
-
-            // Attendee Counter Color Coding
-            const countBadge = document.getElementById('attendee-badge');
-            document.getElementById('attendee-count').innerText = yesCount;
-            if (yesCount < 8) {
-                countBadge.className = 'px-4 py-1.5 rounded-full font-black text-lg transition-colors bg-red-100 text-red-700';
-            } else if (yesCount <= 9) {
-                countBadge.className = 'px-4 py-1.5 rounded-full font-black text-lg transition-colors bg-amber-100 text-amber-700';
-            } else {
-                countBadge.className = 'px-4 py-1.5 rounded-full font-black text-lg transition-colors bg-emerald-100 text-emerald-700';
-            }
-
-            renderRecentMatches();
-            renderStandings();
-        }
-
-        function renderRecentMatches() {
-            const list = document.getElementById('recent-matches-list');
-            list.innerHTML = '';
-
-            const isAdmin = currentUser.admin === true || currentUser.admin === 'yes' || currentUser.username === 'juhatti' || currentUser.username === 'admin';
-            const recent = matchesData.slice(-3).reverse();
-
-            recent.forEach((match, idx) => {
-                const card = document.createElement('div');
-                card.className = 'bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center relative';
-                
-                let teamAGoals = match.teamA.map(p => `${formatShortName(p.name)} [${p.goals}]`).filter(s => !s.includes('[0]')).join(', ');
-                let teamBGoals = match.teamB.map(p => `${formatShortName(p.name)} [${p.goals}]`).filter(s => !s.includes('[0]')).join(', ');
-
-                card.innerHTML = `
-                    ${isAdmin ? `<button data-match-idx="${matchesData.indexOf(match)}" class="edit-past-match-btn absolute top-3 right-3 text-slate-300 hover:text-slate-600 p-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>` : ''}
-                    <div class="text-xs text-slate-400 font-medium mb-1">${match.date}</div>
-                    <div class="text-2xl font-black text-slate-800 mb-2">${match.scoreA} : ${match.scoreB}</div>
-                    <div class="text-xs text-slate-500 flex justify-between px-4">
-                        <div class="w-1/2 text-right pr-2">${teamAGoals || '-'}</div>
-                        <div class="border-r border-slate-300"></div>
-                        <div class="w-1/2 text-left pl-2">${teamBGoals || '-'}</div>
-                    </div>
-                `;
-                list.appendChild(card);
-            });
-
-            document.querySelectorAll('.edit-past-match-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idx = e.currentTarget.dataset.matchIdx;
-                    openMatchMode(matchesData[idx], idx);
-                });
-            });
-        }
-
-        function renderStandings() {
-            const stats = {};
-
-            // Initialize Stats
-            Object.values(usersData).forEach(u => {
-                stats[u.username] = { name: u.name, M: 0, W: 0, D: 0, L: 0, P: 0, G: 0, matches: [] };
-            });
-
-            // Calculate Match Stats
-            matchesData.forEach(m => {
-                const scoreA = parseInt(m.scoreA);
-                const scoreB = parseInt(m.scoreB);
-                
-                const processTeam = (team, myScore, oppScore) => {
-                    team.forEach(p => {
-                        if (!stats[p.username]) {
-                            stats[p.username] = { name: p.name, M: 0, W: 0, D: 0, L: 0, P: 0, G: 0, matches: [] };
-                        }
-                        const st = stats[p.username];
-                        st.M++;
-                        st.G += parseInt(p.goals || 0);
-                        
-                        let outcome = 'D';
-                        if (myScore > oppScore) { st.W++; st.P += 3; outcome = 'W'; }
-                        else if (myScore === oppScore) { st.D++; st.P += 1; outcome = 'D'; }
-                        else { st.L++; outcome = 'L'; }
-                        
-                        st.matches.push({ outcome, goals: parseInt(p.goals || 0) });
-                    });
-                };
-
-                processTeam(m.teamA, scoreA, scoreB);
-                processTeam(m.teamB, scoreB, scoreA);
-            });
-
-            // Sort by Points, then Goals
-            const sorted = Object.values(stats).filter(s => s.M > 0).sort((a, b) => b.P - a.P || b.G - a.G);
-
-            const tbody = document.getElementById('standings-body');
-            tbody.innerHTML = '';
-
-            sorted.forEach((st, idx) => {
-                // Streak Calculation
-                let streakBadge = '';
-                if (st.matches.length >= 2) {
-                    let scoreStreak = 0;
-                    let droughtStreak = 0;
-                    
-                    for (let i = st.matches.length - 1; i >= 0; i--) {
-                        if (st.matches[i].goals > 0) {
-                            if (droughtStreak > 0) break;
-                            scoreStreak++;
-                        } else {
-                            if (scoreStreak > 0) break;
-                            droughtStreak++;
-                        }
-                    }
-
-                    if (scoreStreak >= 2) streakBadge = `<span class="ml-1 text-xs font-bold text-amber-500">🔥${scoreStreak}</span>`;
-                    else if (droughtStreak >= 2) streakBadge = `<span class="ml-1 text-xs font-bold text-blue-400">❄️${droughtStreak}</span>`;
-                }
-
-                // Form Dots
-                const last3 = st.matches.slice(-3);
-                const formDots = last3.map(m => {
-                    if (m.outcome === 'W') return '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>';
-                    if (m.outcome === 'D') return '<span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400"></span>';
-                    return '<span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500"></span>';
-                }).join(' ');
-
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition';
-                tr.innerHTML = `
-                    <td class="py-2.5 px-2 text-xs font-bold text-slate-400">${idx + 1}</td>
-                    <td class="py-2.5 px-2 font-semibold text-slate-800">${formatShortName(st.name)}${streakBadge}</td>
-                    <td class="py-2.5 px-2 text-center text-slate-600">${st.M}</td>
-                    <td class="py-2.5 px-2 text-center text-slate-600">${st.W}</td>
-                    <td class="py-2.5 px-2 text-center text-slate-600">${st.D}</td>
-                    <td class="py-2.5 px-2 text-center text-slate-600">${st.L}</td>
-                    <td class="py-2.5 px-2 text-center font-black text-slate-900">${st.P}</td>
-                    <td class="py-2.5 px-2 text-center font-bold text-slate-700">${st.G}</td>
-                    <td class="py-2.5 px-2 text-center text-xs text-slate-500">${(st.P / st.M).toFixed(2)}</td>
-                    <td class="py-2.5 px-2 text-center text-xs text-slate-500">${(st.G / st.M).toFixed(2)}</td>
-                    <td class="py-2.5 px-2 text-center"><div class="flex items-center justify-center space-x-1">${formDots}</div></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // Setup Match Mode & Admin Actions
-        function setupMatchEvents() {
-            document.getElementById('toggle-match-mode-btn').addEventListener('click', () => {
-                openMatchMode();
-            });
-
-            document.getElementById('close-match-mode-btn').addEventListener('click', () => {
-                document.getElementById('match-mode-panel').classList.add('hidden');
-            });
-
-            document.getElementById('save-match-results-btn').addEventListener('click', () => {
-                saveMatchResults();
-            });
-
-            // Date Modal
-            document.getElementById('edit-next-match-btn').addEventListener('click', () => {
-                document.getElementById('edit-date-modal').classList.remove('hidden');
-            });
-            document.getElementById('cancel-date-btn').addEventListener('click', () => {
-                document.getElementById('edit-date-modal').classList.add('hidden');
-            });
-            document.getElementById('save-date-btn').addEventListener('click', () => {
-                const date = document.getElementById('edit-match-date').value;
-                const start = document.getElementById('edit-match-start').value;
-                const end = document.getElementById('edit-match-end').value;
-
-                if (date) {
-                    const formattedDate = date.replace(/-/g, '. ') + '.';
-                    nextMatchData.date = formattedDate;
-                    if (start) nextMatchData.startTime = start;
-                    if (end) nextMatchData.endTime = end;
-
-                    set(ref(db, 'nextMatch'), nextMatchData);
-                }
-                document.getElementById('edit-date-modal').classList.add('hidden');
-            });
-        }
-
-        function openMatchMode(existingMatch = null, matchIdx = null) {
-            editingMatchId = matchIdx;
-            const panel = document.getElementById('match-mode-panel');
-            panel.classList.remove('hidden');
-
-            const dateLabel = document.getElementById('match-mode-date-label');
-            dateLabel.innerText = `Dátum: ${existingMatch ? existingMatch.date : nextMatchData.date}`;
-
-            const teamAPlayers = document.getElementById('team-a-players');
-            const teamBPlayers = document.getElementById('team-b-players');
-            teamAPlayers.innerHTML = '';
-            teamBPlayers.innerHTML = '';
-
-            // Active attendees (YES status)
-            const activeAttendees = existingMatch 
-                ? [...existingMatch.teamA, ...existingMatch.teamB]
-                : Object.entries(nextMatchData.attendances || {})
-                    .filter(([_, d]) => d.status === 'yes')
-                    .map(([uname, d]) => ({ username: uname, name: d.name, goals: 0 }));
-
-            document.getElementById('team-a-score').value = existingMatch ? existingMatch.scoreA : 0;
-            document.getElementById('team-b-score').value = existingMatch ? existingMatch.scoreB : 0;
-
-            activeAttendees.forEach((player) => {
-                const initialTeam = existingMatch 
-                    ? (existingMatch.teamA.some(p => p.username === player.username) ? 'A' : 'B')
-                    : 'A';
-
-                const playerRow = document.createElement('div');
-                playerRow.className = 'flex items-center justify-between bg-slate-700/50 p-2 rounded-lg text-xs';
-                playerRow.dataset.username = player.username;
-                playerRow.dataset.name = player.name;
-
-                playerRow.innerHTML = `
-                    <span class="font-medium text-slate-200">${formatShortName(player.name)}</span>
-                    <div class="flex items-center space-x-2">
-                        <select class="team-select bg-slate-900 text-xs rounded border border-slate-600 px-1 py-1">
-                            <option value="A" ${initialTeam === 'A' ? 'selected' : ''}>A Csapat</option>
-                            <option value="B" ${initialTeam === 'B' ? 'selected' : ''}>B Csapat</option>
-                        </select>
-                        <input type="number" value="${player.goals || 0}" min="0" class="player-goals w-10 px-1 py-1 bg-slate-900 text-center rounded border border-slate-600">
-                    </div>
-                `;
-
-                if (initialTeam === 'A') teamAPlayers.appendChild(playerRow);
-                else teamBPlayers.appendChild(playerRow);
-
-                playerRow.querySelector('.team-select').addEventListener('change', (e) => {
-                    if (e.target.value === 'A') teamAPlayers.appendChild(playerRow);
-                    else teamBPlayers.appendChild(playerRow);
-                });
-            });
-        }
-
-        function saveMatchResults() {
-            const teamA = [];
-            const teamB = [];
-
-            document.querySelectorAll('#team-a-players > div').forEach(row => {
-                teamA.push({
-                    username: row.dataset.username,
-                    name: row.dataset.name,
-                    goals: parseInt(row.querySelector('.player-goals').value || 0)
-                });
-            });
-
-            document.querySelectorAll('#team-b-players > div').forEach(row => {
-                teamB.push({
-                    username: row.dataset.username,
-                    name: row.dataset.name,
-                    goals: parseInt(row.querySelector('.player-goals').value || 0)
-                });
-            });
-
-            const matchRecord = {
-                date: editingMatchId !== null ? matchesData[editingMatchId].date : nextMatchData.date,
-                scoreA: parseInt(document.getElementById('team-a-score').value || 0),
-                scoreB: parseInt(document.getElementById('team-b-score').value || 0),
-                teamA,
-                teamB
-            };
-
-            if (editingMatchId !== null) {
-                matchesData[editingMatchId] = matchRecord;
-            } else {
-                matchesData.push(matchRecord);
-                
-                // Roll forward next match date +7 days automatically
-                const dateParts = nextMatchData.date.replace(/\./g, '').trim().split(' ');
-                if (dateParts.length === 3) {
-                    const currentD = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-                    currentD.setDate(currentD.getDate() + 7);
-                    const newYear = currentD.getFullYear();
-                    const newMonth = String(currentD.getMonth() + 1).padStart(2, '0');
-                    const newDay = String(currentD.getDate()).padStart(2, '0');
-                    
-                    nextMatchData.date = `${newYear}. ${newMonth}. ${newDay}.`;
-                    nextMatchData.attendances = {};
-                    set(ref(db, 'nextMatch'), nextMatchData);
-                }
-            }
-
-            set(ref(db, 'matches'), matchesData);
-            document.getElementById('match-mode-panel').classList.add('hidden');
-            editingMatchId = null;
-        }
+        // Expose Firebase DB methods to window so app.js can access them without CORS import issues
+        window.FB = {
+            db,
+            ref,
+            set,
+            onValue
+        };
     </script>
+
+    <!-- Application Logic (Standard Script) -->
+    <script src="app.js"></script>
 </body>
 </html>
