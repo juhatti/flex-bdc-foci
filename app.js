@@ -1,4 +1,3 @@
-// State variables
 let currentUser = null;
 let isAdmin = false;
 let users = {};
@@ -6,8 +5,8 @@ let nextMatch = { date: "2026. 10. 27.", startTime: "09:00", endTime: "10:00", a
 let matches = [];
 let editingMatchIndex = null;
 let currentMatchPage = 0;
+let selectedYear = 2026;
 
-// Init Event Listeners on Load
 window.addEventListener('DOMContentLoaded', () => {
     initFirebaseListeners();
     bindEvents();
@@ -51,13 +50,29 @@ function bindEvents() {
     document.getElementById('edit-next-match-btn').addEventListener('click', openEditMatchDateModal);
     document.getElementById('open-match-mode-btn').addEventListener('click', () => openMatchMode());
     document.getElementById('close-match-mode-btn').addEventListener('click', closeMatchMode);
-    document.getElementById('add-sub-a-btn').addEventListener('click', () => addSubstitute('A'));
-    document.getElementById('add-sub-b-btn').addEventListener('click', () => addSubstitute('B'));
+    document.getElementById('add-general-sub-btn').addEventListener('click', addGeneralSubstitute);
     document.getElementById('save-match-results-btn').addEventListener('click', saveMatchResults);
     document.getElementById('prev-match-btn').addEventListener('click', prevMatchPage);
     document.getElementById('next-match-btn').addEventListener('click', nextMatchPage);
     document.getElementById('close-date-modal-btn').addEventListener('click', closeEditMatchDateModal);
     document.getElementById('save-date-modal-btn').addEventListener('click', saveNextMatchDateModal);
+
+    const yearBtn = document.getElementById('year-dropdown-btn');
+    const yearMenu = document.getElementById('year-dropdown-menu');
+    yearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        yearMenu.classList.toggle('hidden');
+    });
+    window.addEventListener('click', () => {
+        yearMenu.classList.add('hidden');
+    });
+}
+
+window.selectYear = function(year) {
+    selectedYear = year;
+    document.getElementById('selected-year-label').innerText = year;
+    document.getElementById('year-dropdown-menu').classList.add('hidden');
+    renderStandings();
 }
 
 function formatHungarianName(fullName) {
@@ -284,6 +299,7 @@ function renderAttendeesList() {
     entries.forEach(([uname, att], idx) => {
         if (att.status === 'yes') yesCount++;
         const formattedName = formatHungarianName(att.name || uname);
+        const isSub = att.isSubstitute === true;
 
         let iconHtml = '';
         if (att.status === 'yes') {
@@ -296,26 +312,49 @@ function renderAttendeesList() {
 
         const row = document.createElement('div');
         row.className = 'py-3 flex items-center justify-between text-sm hover:bg-gray-50/50 px-2 rounded-xl transition';
-        row.innerHTML = `
-            <div class="flex items-center space-x-3">
-                <span class="text-xs text-gray-400 font-bold w-4">${idx + 1}.</span>
-                <div>
-                    <span class="font-semibold text-gray-800">${formattedName}</span>
-                    ${att.note ? `<p class="text-xs text-gray-400 italic font-normal">"${att.note}"</p>` : ''}
+        
+        if (isSub) {
+            // Beugró sora admin nézetben (nincs státusz váltó gomb, helyette törlés, nincs megjegyzés, lila badge)
+            row.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs text-gray-400 font-bold w-4">${idx + 1}.</span>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-semibold text-gray-800">${formattedName}</span>
+                            <span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Beugró</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="flex items-center space-x-2">
-                ${isAdmin ? `
-                    <button class="btn-att-yes text-xs px-2 py-1 rounded ${att.status === 'yes' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500'}">✓</button>
-                    <button class="btn-att-no text-xs px-2 py-1 rounded ${att.status === 'no' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500'}">✕</button>
-                ` : ''}
-                ${iconHtml}
-            </div>
-        `;
-
-        if (isAdmin) {
-            row.querySelector('.btn-att-yes').addEventListener('click', () => setUserStatusAdmin(uname, 'yes'));
-            row.querySelector('.btn-att-no').addEventListener('click', () => setUserStatusAdmin(uname, 'no'));
+                <div class="flex items-center space-x-2">
+                    ${isAdmin ? `<button class="btn-del-sub text-xs px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 font-semibold rounded-lg transition" title="Beugró törlése"><i class="fa-solid fa-trash mr-1"></i> Törlés</button>` : ''}
+                    <span class="text-emerald-500 bg-emerald-50 p-1.5 rounded-lg"><i class="fa-solid fa-square-check"></i></span>
+                </div>
+            `;
+            if (isAdmin) {
+                row.querySelector('.btn-del-sub').addEventListener('click', () => removeGeneralSubstitute(uname));
+            }
+        } else {
+            // Normál jelentkező sora
+            row.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs text-gray-400 font-bold w-4">${idx + 1}.</span>
+                    <div>
+                        <span class="font-semibold text-gray-800">${formattedName}</span>
+                        ${att.note ? `<p class="text-xs text-gray-400 italic font-normal">"${att.note}"</p>` : ''}
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    ${isAdmin ? `
+                        <button class="btn-att-yes text-xs px-2 py-1 rounded ${att.status === 'yes' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500'}">✓</button>
+                        <button class="btn-att-no text-xs px-2 py-1 rounded ${att.status === 'no' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500'}">✕</button>
+                    ` : ''}
+                    ${iconHtml}
+                </div>
+            `;
+            if (isAdmin) {
+                row.querySelector('.btn-att-yes').addEventListener('click', () => setUserStatusAdmin(uname, 'yes'));
+                row.querySelector('.btn-att-no').addEventListener('click', () => setUserStatusAdmin(uname, 'no'));
+            }
         }
 
         container.appendChild(row);
@@ -330,6 +369,28 @@ function renderAttendeesList() {
     } else {
         badgeContainer.className = 'border rounded-xl px-4 py-2 text-center transition-colors bg-emerald-50 border-emerald-100 text-emerald-700';
     }
+}
+
+function addGeneralSubstitute() {
+    const subName = prompt('Add meg a beugró nevét:', 'Beugró Játékos');
+    if (!subName || !subName.trim()) return;
+
+    const subKey = 'sub_' + Date.now();
+    const { db, ref, set } = window.FB;
+    set(ref(db, `nextMatch/attendances/${subKey}`), {
+        status: 'yes',
+        note: '',
+        name: subName.trim(),
+        isSubstitute: true
+    });
+    showToast('Beugró hozzáadva a jelentkezőkhöz!');
+}
+
+function removeGeneralSubstitute(subKey) {
+    if (!confirm('Biztosan törlöd ezt a beugrót?')) return;
+    const { db, ref, set } = window.FB;
+    set(ref(db, `nextMatch/attendances/${subKey}`), null);
+    showToast('Beugró törölve.');
 }
 
 function renderLastMatches() {
@@ -363,8 +424,8 @@ function renderLastMatches() {
 
     pageMatches.forEach((m) => {
         const actualIndex = matches.indexOf(m);
-        const teamAScorers = (m.teamA || []).filter(p => p.goals > 0).map(p => `${formatHungarianName(p.name)} <span class="bg-black text-white px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
-        const teamBScorers = (m.teamB || []).filter(p => p.goals > 0).map(p => `${formatHungarianName(p.name)} <span class="bg-black text-white px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
+        const teamAScorers = (m.teamA || []).filter(p => p.goals > 0).map(p => `${formatHungarianName(p.name)} <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
+        const teamBScorers = (m.teamB || []).filter(p => p.goals > 0).map(p => `${formatHungarianName(p.name)} <span class="bg-indigo-50 text-indigo-800 border border-indigo-200 px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
 
         const card = document.createElement('div');
         card.className = 'bg-gray-50 border border-gray-100 p-4 rounded-xl text-center relative shadow-2xs';
@@ -412,6 +473,10 @@ function renderStandings() {
     });
 
     matches.forEach(m => {
+        if (m.date && !m.date.startsWith(selectedYear.toString())) {
+            return;
+        }
+
         const scoreA = parseInt(m.scoreA);
         const scoreB = parseInt(m.scoreB);
 
@@ -466,7 +531,7 @@ function renderStandings() {
 
         let topScorerBadge = '';
         if (maxGoals > 0 && st.G === maxGoals) {
-            topScorerBadge = `<span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-yellow-300 text-yellow-900 border border-yellow-400 shadow-2xs" title="Gólkirály">⚽👑</span>`;
+            topScorerBadge = `<span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-yellow-300 text-yellow-900 border border-yellow-400 shadow-2xs" title="Gólkirály">👑</span>`;
         }
 
         const pm = (st.P / st.M).toFixed(2);
@@ -485,15 +550,15 @@ function renderStandings() {
         tr.innerHTML = `
             <td class="py-3 px-3 text-xs text-gray-400 font-bold">${idx + 1}</td>
             <td class="py-3 px-3 font-semibold text-gray-800">${formatHungarianName(st.name)}${topScorerBadge}${streakBadge}</td>
-            <td class="py-3 px-2 text-center text-xs">${st.M}</td>
-            <td class="py-3 px-2 text-center text-xs">${st.W}</td>
-            <td class="py-3 px-2 text-center text-xs">${st.D}</td>
-            <td class="py-3 px-2 text-center text-xs">${st.L}</td>
+            <td class="py-3 px-2 text-center text-xs hidden sm:table-cell">${st.M}</td>
+            <td class="py-3 px-2 text-center text-xs hidden md:table-cell">${st.W}</td>
+            <td class="py-3 px-2 text-center text-xs hidden md:table-cell">${st.D}</td>
+            <td class="py-3 px-2 text-center text-xs hidden md:table-cell">${st.L}</td>
             <td class="py-3 px-2 text-center text-sm font-bold text-gray-900">${st.P}</td>
-            <td class="py-3 px-2 text-center text-xs font-bold text-gray-900">${st.G}</td>
-            <td class="py-3 px-2 text-center text-xs text-gray-500">${pm}</td>
-            <td class="py-3 px-2 text-center text-xs text-gray-500">${gm}</td>
-            <td class="py-3 px-3 text-center whitespace-nowrap">${formHtml}</td>
+            <td class="py-3 px-2 text-center text-sm font-bold text-gray-900">${st.G}</td>
+            <td class="py-3 px-2 text-center text-xs text-gray-500 hidden lg:table-cell">${pm}</td>
+            <td class="py-3 px-2 text-center text-xs text-gray-500 hidden lg:table-cell">${gm}</td>
+            <td class="py-3 px-3 text-center whitespace-nowrap hidden sm:table-cell">${formHtml}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -523,23 +588,29 @@ function openMatchMode(matchIndex = null) {
     } else {
         activeList = Object.entries(nextMatch.attendances || {})
             .filter(([_, d]) => d.status === 'yes')
-            .map(([uname, d], idx) => ({ username: uname, name: d.name, team: idx % 2 === 0 ? 'A' : 'B', goals: 0, isSubstitute: false }));
+            .map(([uname, d], idx) => ({ 
+                username: uname, 
+                name: d.name, 
+                team: idx % 2 === 0 ? 'A' : 'B', 
+                goals: 0, 
+                isSubstitute: d.isSubstitute === true 
+            }));
     }
 
     activeList.forEach(p => renderPlayerRow(p, teamAPaid, teamBPaid));
     updateMatchScores();
 }
 
-function renderPlayerRow(p, teamAContainer, teamBContainer, isSub = false) {
+function renderPlayerRow(p, teamAContainer, teamBContainer) {
     const el = document.createElement('div');
     el.className = 'flex items-center justify-between p-2 bg-white rounded-lg text-xs player-row border border-gray-200 shadow-2xs';
     el.dataset.username = p.username || '';
     el.dataset.name = p.name;
-    el.dataset.isSubstitute = isSub ? 'true' : (p.isSubstitute ? 'true' : 'false');
+    el.dataset.isSubstitute = p.isSubstitute ? 'true' : 'false';
 
     el.innerHTML = `
         <div class="flex items-center space-x-1.5">
-            ${isSub || p.isSubstitute ? '<span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Beugró</span>' : ''}
+            ${p.isSubstitute ? '<span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Beugró</span>' : ''}
             <span class="font-semibold text-gray-800">${formatHungarianName(p.name)}</span>
         </div>
         <div class="flex items-center space-x-2">
@@ -552,19 +623,11 @@ function renderPlayerRow(p, teamAContainer, teamBContainer, isSub = false) {
                 <span class="player-goals px-2 font-bold text-gray-800">${p.goals || 0}</span>
                 <button type="button" class="btn-plus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">+</button>
             </div>
-            ${isSub || p.isSubstitute ? '<button type="button" class="btn-delete-sub text-red-400 hover:text-red-600 px-1"><i class="fa-solid fa-trash text-xs"></i></button>' : ''}
         </div>
     `;
 
     el.querySelector('.btn-minus').addEventListener('click', (e) => changeGoals(e.target, -1));
     el.querySelector('.btn-plus').addEventListener('click', (e) => changeGoals(e.target, 1));
-    
-    if (isSub || p.isSubstitute) {
-        el.querySelector('.btn-delete-sub').addEventListener('click', () => {
-            el.remove();
-            updateMatchScores();
-        });
-    }
 
     const selectEl = el.querySelector('.team-select');
     selectEl.addEventListener('change', (e) => {
@@ -575,25 +638,6 @@ function renderPlayerRow(p, teamAContainer, teamBContainer, isSub = false) {
 
     if (p.team === 'A') teamAContainer.appendChild(el);
     else teamBContainer.appendChild(el);
-}
-
-function addSubstitute(targetTeam) {
-    const subName = prompt('Add meg a beugró nevét:', 'Beugró Játékos');
-    if (!subName || !subName.trim()) return;
-
-    const teamAPaid = document.getElementById('team-a-players');
-    const teamBPaid = document.getElementById('team-b-players');
-
-    const subPlayer = {
-        username: 'sub_' + Date.now(),
-        name: subName.trim(),
-        team: targetTeam,
-        goals: 0,
-        isSubstitute: true
-    };
-
-    renderPlayerRow(subPlayer, teamAPaid, teamBPaid, true);
-    updateMatchScores();
 }
 
 function changeGoals(btn, delta) {

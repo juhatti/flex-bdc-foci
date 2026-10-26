@@ -44,9 +44,8 @@
             
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Felhasználónév</label>
                     <input type="text" id="login-username" required 
-                           placeholder="pl. juhatti" 
+                           placeholder="felhasználónév" 
                            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-800">
                 </div>
 
@@ -143,12 +142,12 @@
 
                 <div class="max-w-xs mx-auto mb-4">
                     <input type="text" id="user-note" 
-                           placeholder="Megjegyzés (pl. kicsit fáj a lábam)" 
+                           placeholder="Megjegyzés írása..." 
                            class="w-full text-center text-sm px-4 py-2 border-b border-gray-200 focus:border-emerald-500 focus:outline-none text-gray-600 bg-transparent">
                 </div>
 
                 <p id="attendance-msg" class="text-xs text-gray-400 font-medium h-5 transition-opacity">
-                    Köszi a jelentkezést! Ha változna a részvételed, kérlek időben jelezd!
+                    Ha változna a részvételed, kérlek időben jelezd!
                 </p>
             </section>
 
@@ -171,13 +170,16 @@
                 </div>
 
                 <div id="admin-controls" class="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-2 justify-end hidden">
+                    <button id="add-general-sub-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition shadow-sm">
+                        <i class="fa-solid fa-user-plus mr-1"></i> Beugró hozzáadása
+                    </button>
                     <button id="open-match-mode-btn" class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl text-xs transition shadow-sm">
                         <i class="fa-solid fa-soccer-ball mr-1"></i> Meccs Mód
                     </button>
                 </div>
             </section>
 
-            <!-- MATCH RECORDING SECTION -->
+            <!-- MATCH RECORDING SECTION (Tiszta, nincsenek benne beugró gombok) -->
             <section id="match-mode-section" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-xl hidden relative">
                 <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
                     <h3 class="text-lg font-bold text-gray-900"><i class="fa-solid fa-sliders text-emerald-600 mr-2"></i>Meccs Rögzítése & Csapatok</h3>
@@ -192,9 +194,6 @@
                             <span class="text-xs font-semibold text-gray-500">Gólok: <strong id="team-a-score" class="text-base text-gray-900">0</strong></span>
                         </div>
                         <div id="team-a-players" class="space-y-2 mb-4 min-h-[100px]"></div>
-                        <button id="add-sub-a-btn" class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-xs border border-emerald-200 transition">
-                            + Beugró hozzáadása A csapathoz
-                        </button>
                     </div>
 
                     <!-- Team B -->
@@ -204,9 +203,6 @@
                             <span class="text-xs font-semibold text-gray-500">Gólok: <strong id="team-b-score" class="text-base text-gray-900">0</strong></span>
                         </div>
                         <div id="team-b-players" class="space-y-2 mb-4 min-h-[100px]"></div>
-                        <button id="add-sub-b-btn" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg text-xs border border-indigo-200 transition">
-                            + Beugró hozzáadása B csapathoz
-                        </button>
                     </div>
                 </div>
 
@@ -240,8 +236,16 @@
             <!-- STANDINGS TABLE -->
             <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">Tabella 2026</h3>
-                    <span class="text-xs text-gray-400">Automatikus statisztika</span>
+                    <h3 class="text-lg font-bold text-gray-800">Tabella</h3>
+                    <div class="relative">
+                        <button id="year-dropdown-btn" class="text-xs font-semibold px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition flex items-center space-x-1.5">
+                            <span id="selected-year-label">2026</span>
+                            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div id="year-dropdown-menu" class="absolute right-0 mt-1 w-24 bg-white border border-gray-200 rounded-xl shadow-lg hidden z-20 py-1">
+                            <button onclick="selectYear(2026)" class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 font-medium">2026</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto">
@@ -250,15 +254,15 @@
                             <tr>
                                 <th class="py-3 px-3">#</th>
                                 <th class="py-3 px-3">Név</th>
-                                <th class="py-3 px-2 text-center">M</th>
-                                <th class="py-3 px-2 text-center">W</th>
-                                <th class="py-3 px-2 text-center">D</th>
-                                <th class="py-3 px-2 text-center">L</th>
+                                <th class="py-3 px-2 text-center hidden sm:table-cell">M</th>
+                                <th class="py-3 px-2 text-center hidden md:table-cell">W</th>
+                                <th class="py-3 px-2 text-center hidden md:table-cell">D</th>
+                                <th class="py-3 px-2 text-center hidden md:table-cell">L</th>
                                 <th class="py-3 px-2 text-center font-bold text-gray-700">P</th>
-                                <th class="py-3 px-2 text-center">G</th>
-                                <th class="py-3 px-2 text-center">P/M</th>
-                                <th class="py-3 px-2 text-center">G/M</th>
-                                <th class="py-3 px-3 text-center">F</th>
+                                <th class="py-3 px-2 text-center font-bold text-gray-700">G</th>
+                                <th class="py-3 px-2 text-center hidden lg:table-cell">P/M</th>
+                                <th class="py-3 px-2 text-center hidden lg:table-cell">G/M</th>
+                                <th class="py-3 px-3 text-center hidden sm:table-cell">F</th>
                             </tr>
                         </thead>
                         <tbody id="standings-tbody" class="divide-y divide-gray-50 text-gray-700 font-medium">
@@ -320,7 +324,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Expose Firebase DB methods to window so app.js can access them without CORS import issues
         window.FB = {
             db,
             ref,
@@ -329,7 +332,7 @@
         };
     </script>
 
-    <!-- Application Logic (Standard Script) -->
+    <!-- Application Logic -->
     <script src="app.js"></script>
 </body>
 </html>
