@@ -1,11 +1,14 @@
 let currentUser = null;
 let isAdmin = false;
 let users = {};
-let nextMatch = { date: "2026. 10. 27.", startTime: "09:00", endTime: "10:00", attendances: {} };
+let nextMatch = { date: "2026. 10. 27.", startTime: "09:00", endTime: "10:00", courtFee: 18000, feePerPerson: 1000, attendances: {} };
 let matches = [];
+let transactions = {};
+let treasury = [];
 let editingMatchIndex = null;
 let currentMatchPage = 0;
 let selectedYear = 2026;
+let selectedPaymentUsername = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     initFirebaseListeners();
@@ -27,6 +30,8 @@ function initFirebaseListeners() {
         if (val) {
             nextMatch = val;
             if (!nextMatch.attendances) nextMatch.attendances = {};
+            if (!nextMatch.courtFee) nextMatch.courtFee = 18000;
+            if (!nextMatch.feePerPerson) nextMatch.feePerPerson = 1000;
         }
         renderApp();
     });
@@ -34,6 +39,17 @@ function initFirebaseListeners() {
     onValue(ref(db, 'matches'), (snapshot) => {
         const val = snapshot.val();
         matches = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+        renderApp();
+    });
+
+    onValue(ref(db, 'transactions'), (snapshot) => {
+        transactions = snapshot.val() || {};
+        renderApp();
+    });
+
+    onValue(ref(db, 'treasury'), (snapshot) => {
+        const val = snapshot.val();
+        treasury = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
         renderApp();
     });
 }
@@ -57,6 +73,26 @@ function bindEvents() {
     document.getElementById('close-date-modal-btn').addEventListener('click', closeEditMatchDateModal);
     document.getElementById('save-date-modal-btn').addEventListener('click', saveNextMatchDateModal);
 
+    // Accordions
+    document.getElementById('toggle-my-trans-btn').addEventListener('click', toggleMyTransAccordion);
+    document.getElementById('toggle-treasury-btn').addEventListener('click', toggleTreasuryAccordion);
+
+    // Player payment modal
+    document.getElementById('close-payment-modal-btn').addEventListener('click', closePaymentModal);
+    document.getElementById('save-payment-btn').addEventListener('click', savePayment);
+    document.getElementById('btn-amount-minus').addEventListener('click', () => adjustModalAmount(-500));
+    document.getElementById('btn-amount-plus').addEventListener('click', () => adjustModalAmount(500));
+
+    // Treasury modal
+    document.getElementById('open-treasury-modal-btn').addEventListener('click', openTreasuryModal);
+    document.getElementById('close-treasury-modal-btn').addEventListener('click', closeTreasuryModal);
+    document.getElementById('save-treasury-btn').addEventListener('click', saveTreasuryTransaction);
+
+    // Edit Email modal
+    document.getElementById('open-edit-email-btn').addEventListener('click', openEditEmailModal);
+    document.getElementById('close-edit-email-btn').addEventListener('click', closeEditEmailModal);
+    document.getElementById('edit-email-form').addEventListener('submit', saveEditedEmail);
+
     const yearBtn = document.getElementById('year-dropdown-btn');
     const yearMenu = document.getElementById('year-dropdown-menu');
     yearBtn.addEventListener('click', (e) => {
@@ -66,6 +102,20 @@ function bindEvents() {
     window.addEventListener('click', () => {
         yearMenu.classList.add('hidden');
     });
+}
+
+function toggleMyTransAccordion() {
+    const container = document.getElementById('my-transactions-container');
+    const chevron = document.getElementById('my-trans-chevron');
+    container.classList.toggle('hidden');
+    chevron.classList.toggle('rotate-180');
+}
+
+function toggleTreasuryAccordion() {
+    const container = document.getElementById('treasury-container');
+    const chevron = document.getElementById('treasury-chevron');
+    container.classList.toggle('hidden');
+    chevron.classList.toggle('rotate-180');
 }
 
 window.selectYear = function(year) {
@@ -114,7 +164,7 @@ function handleLogin(e) {
 
     if (usernameInput === 'admin') {
         if (passInput === 'arsenal') {
-            currentUser = { username: 'admin', name: 'Juhász Attila (Admin)', admin: true };
+            currentUser = { username: 'admin', name: 'Juhász Attila (Admin)', admin: true, email: 'juhatti@gmail.com' };
             isAdmin = true;
             saveSession();
         } else {
@@ -198,6 +248,43 @@ function toggleAuthMode(mode) {
     }
 }
 
+function openEditEmailModal() {
+    if (!currentUser || currentUser.username === 'admin') return;
+    const parts = (currentUser.name || '').trim().split(/\s+/);
+    const lastName = parts[0] || '';
+    const firstName = parts.slice(1).join(' ') || '';
+
+    document.getElementById('edit-lastname').value = lastName;
+    document.getElementById('edit-firstname').value = firstName;
+    document.getElementById('edit-email').value = currentUser.email || '';
+    document.getElementById('edit-username').value = currentUser.username || '';
+    document.getElementById('edit-email-modal').classList.remove('hidden');
+}
+
+function closeEditEmailModal() {
+    document.getElementById('edit-email-modal').classList.add('hidden');
+}
+
+function saveEditedEmail(e) {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const newEmail = document.getElementById('edit-email').value.trim();
+    if (!newEmail) {
+        showToast('Kérlek add meg az email címet!');
+        return;
+    }
+
+    currentUser.email = newEmail;
+    users[currentUser.username].email = newEmail;
+
+    const { db, ref, set } = window.FB;
+    set(ref(db, `users/${currentUser.username}`), currentUser);
+    saveSession();
+    closeEditEmailModal();
+    showToast('Email cím sikeresen frissítve!');
+}
+
 function cycleAttendance() {
     if (!currentUser) return;
     const currentAtt = nextMatch.attendances[currentUser.username] || { status: 'maybe', note: '' };
@@ -265,6 +352,7 @@ function renderApp() {
         renderNextMatchCard();
         renderAttendeesList();
         renderLastMatches();
+        renderFinances();
         renderStandings();
     } else {
         dashSec.classList.add('hidden');
@@ -275,6 +363,14 @@ function renderApp() {
 
 function renderNextMatchCard() {
     document.getElementById('next-match-date-display').innerText = `${nextMatch.date} ${nextMatch.startTime} - ${nextMatch.endTime}`;
+    
+    const fee = nextMatch.courtFee || 18000;
+    const perPerson = nextMatch.feePerPerson || 1000;
+    document.getElementById('next-match-fee-info').innerHTML = `
+        <span>${fee.toLocaleString()} Ft</span>
+        <span>•</span>
+        <span><i class="fa-solid fa-user text-gray-300 mr-0.5"></i> ${perPerson.toLocaleString()} Ft / fő</span>
+    `;
 
     if (!currentUser) return;
     const myAtt = nextMatch.attendances[currentUser.username] || { status: 'maybe', note: '' };
@@ -461,6 +557,337 @@ function nextMatchPage() {
     }
 }
 
+// PÉNZÜGYEK & KASSZA RENDERELÉSE
+function renderFinances() {
+    if (!currentUser) return;
+
+    const balances = {};
+    Object.keys(users).forEach(uname => {
+        const userTrans = transactions[uname] || [];
+        balances[uname] = userTrans.reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+    });
+
+    const myBal = balances[currentUser.username] || 0;
+    const myBalBadge = document.getElementById('my-balance-badge');
+    const myBalAmount = document.getElementById('my-balance-amount');
+
+    myBalAmount.innerText = `${myBal > 0 ? '+' : ''}${myBal.toLocaleString()} Ft`;
+    if (myBal >= 0) {
+        myBalBadge.className = 'px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-emerald-50 border-emerald-200 text-emerald-800';
+    } else {
+        myBalBadge.className = 'px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-red-50 border-red-200 text-red-800';
+    }
+
+    const myTransList = document.getElementById('my-transactions-list');
+    myTransList.innerHTML = '';
+    const myUserTrans = (transactions[currentUser.username] || []).slice(-3).reverse();
+
+    if (myUserTrans.length === 0) {
+        myTransList.innerHTML = `<p class="text-xs text-gray-400 py-2">Még nincs tranzakciód.</p>`;
+    } else {
+        myUserTrans.forEach(t => {
+            const isPos = t.amount >= 0;
+            let typeLabel = 'Befizetés';
+            if (t.type === 'match') typeLabel = 'Meccs pályadíj';
+            else if (t.type === 'initial') typeLabel = 'Kezdőegyenleg';
+
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs';
+            row.innerHTML = `
+                <div>
+                    <span class="font-semibold text-gray-800 block">${typeLabel}</span>
+                    <span class="text-[10px] text-gray-400">${t.date}</span>
+                </div>
+                <span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${t.amount} Ft</span>
+            `;
+            myTransList.appendChild(row);
+        });
+    }
+
+    // Admin játékos névsora
+    const adminFinSec = document.getElementById('admin-finances-container');
+    if (isAdmin) {
+        adminFinSec.classList.remove('hidden');
+        const allBalList = document.getElementById('all-users-balances-list');
+        allBalList.innerHTML = '';
+
+        const lastMatch = matches.length > 0 ? matches[matches.length - 1] : null;
+        const recentUsernames = new Set();
+        if (lastMatch) {
+            (lastMatch.teamA || []).forEach(p => { if (p.username) recentUsernames.add(p.username); });
+            (lastMatch.teamB || []).forEach(p => { if (p.username) recentUsernames.add(p.username); });
+        }
+
+        const allUsersArr = Object.values(users);
+        const recentUsers = allUsersArr.filter(u => recentUsernames.has(u.username));
+        const otherUsers = allUsersArr.filter(u => !recentUsernames.has(u.username));
+
+        const renderUserRow = (u) => {
+            const bal = balances[u.username] || 0;
+            const isPos = bal >= 0;
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 hover:bg-purple-50/50 cursor-pointer border border-gray-100 transition text-xs';
+            row.innerHTML = `
+                <span class="font-semibold text-gray-800">${formatHungarianName(u.name)}</span>
+                <span class="font-bold px-2 py-0.5 rounded-md text-[11px] ${isPos ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
+                    ${isPos ? '+' : ''}${bal.toLocaleString()} Ft
+                </span>
+            `;
+            row.addEventListener('click', () => openPaymentModal(u.username, u.name, bal));
+            allBalList.appendChild(row);
+        };
+
+        if (recentUsers.length > 0) {
+            recentUsers.forEach(renderUserRow);
+        }
+
+        if (recentUsers.length > 0 && otherUsers.length > 0) {
+            const hr = document.createElement('hr');
+            hr.className = 'my-2 border-gray-200';
+            allBalList.appendChild(hr);
+        }
+
+        if (otherUsers.length > 0) {
+            otherUsers.forEach(renderUserRow);
+        }
+    } else {
+        adminFinSec.classList.add('hidden');
+    }
+
+    // Csapatkassza Szekció
+    const treasuryBal = treasury.reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+    const treasuryBadge = document.getElementById('treasury-balance-badge');
+    const treasuryAmount = document.getElementById('treasury-balance-amount');
+
+    treasuryAmount.innerText = `${treasuryBal > 0 ? '+' : ''}${treasuryBal.toLocaleString()} Ft`;
+    if (treasuryBal >= 0) {
+        treasuryBadge.className = 'px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-amber-50 border-amber-200 text-amber-800';
+    } else {
+        treasuryBadge.className = 'px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs bg-red-50 border-red-200 text-red-800';
+    }
+
+    const treasuryList = document.getElementById('treasury-transactions-list');
+    treasuryList.innerHTML = '';
+    const lastTreasury = [...treasury].slice(-3).reverse();
+
+    const treasuryModalBtn = document.getElementById('open-treasury-modal-btn');
+    if (isAdmin) {
+        treasuryModalBtn.classList.remove('hidden');
+    } else {
+        treasuryModalBtn.classList.add('hidden');
+    }
+
+    if (lastTreasury.length === 0) {
+        treasuryList.innerHTML = `<p class="text-xs text-gray-400 py-2">Még nincs kassza mozgás.</p>`;
+    } else {
+        lastTreasury.forEach(t => {
+            const isPos = t.amount >= 0;
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs';
+            row.innerHTML = `
+                <div>
+                    <span class="font-semibold text-gray-800 block">${t.note || (t.type === 'income' ? 'Bevétel' : 'Kiadás')}</span>
+                    <span class="text-[10px] text-gray-400">${t.date}</span>
+                </div>
+                <span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>
+            `;
+            treasuryList.appendChild(row);
+        });
+    }
+}
+
+// MODALOK & TÖRLÉSEK KEZELÉSE
+function openPaymentModal(username, name, currentBal) {
+    if (!isAdmin) return;
+    selectedPaymentUsername = username;
+    document.getElementById('modal-user-name').innerText = formatHungarianName(name);
+    document.getElementById('modal-user-balance').innerText = `${currentBal > 0 ? '+' : ''}${currentBal.toLocaleString()} Ft`;
+    document.getElementById('modal-amount-input').value = 1000;
+    document.getElementById('modal-trans-type').value = 'payment';
+
+    renderModalPlayerTransactions();
+    document.getElementById('payment-modal').classList.remove('hidden');
+}
+
+function renderModalPlayerTransactions() {
+    const lastTransContainer = document.getElementById('modal-user-last-trans');
+    lastTransContainer.innerHTML = '';
+    const userTrans = transactions[selectedPaymentUsername] || [];
+    const last3 = [...userTrans].slice(-3).reverse();
+
+    if (last3.length === 0) {
+        lastTransContainer.innerHTML = `<span class="text-[11px] text-gray-400 italic">Nincs még tranzakció.</span>`;
+        return;
+    }
+
+    last3.forEach((t) => {
+        const originalIndex = userTrans.indexOf(t);
+        const isPos = t.amount >= 0;
+        let typeLabel = 'Befizetés';
+        if (t.type === 'match') typeLabel = 'Meccs';
+        else if (t.type === 'initial') typeLabel = 'Kezdő';
+
+        const div = document.createElement('div');
+        div.className = 'flex justify-between items-center bg-gray-50 p-1.5 rounded text-[11px]';
+        div.innerHTML = `
+            <div>
+                <span class="text-gray-500">${t.date} (${typeLabel})</span>
+                <span class="font-bold ml-1 ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${t.amount} Ft</span>
+            </div>
+            <button type="button" class="btn-del-player-trans text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded bg-red-50 font-bold" title="Tranzakció törlése">
+                <i class="fa-solid fa-trash text-[10px]"></i>
+            </button>
+        `;
+
+        div.querySelector('.btn-del-player-trans').addEventListener('click', () => {
+            deletePlayerTransaction(originalIndex);
+        });
+
+        lastTransContainer.appendChild(div);
+    });
+}
+
+function deletePlayerTransaction(index) {
+    if (!confirm('Biztosan törlöd ezt a tranzakciót?')) return;
+    const userTrans = transactions[selectedPaymentUsername] || [];
+    userTrans.splice(index, 1);
+    transactions[selectedPaymentUsername] = userTrans;
+
+    const { db, ref, set } = window.FB;
+    set(ref(db, `transactions/${selectedPaymentUsername}`), userTrans);
+    
+    // Frissítjük a modal egyenleget és listát
+    const newBal = userTrans.reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+    document.getElementById('modal-user-balance').innerText = `${newBal > 0 ? '+' : ''}${newBal.toLocaleString()} Ft`;
+    renderModalPlayerTransactions();
+    showToast('Tranzakció törölve.');
+}
+
+function closePaymentModal() {
+    document.getElementById('payment-modal').classList.add('hidden');
+    selectedPaymentUsername = null;
+}
+
+function adjustModalAmount(delta) {
+    const input = document.getElementById('modal-amount-input');
+    let val = parseInt(input.value) || 0;
+    val = Math.max(500, val + delta);
+    input.value = val;
+}
+
+function savePayment() {
+    if (!isAdmin || !selectedPaymentUsername) return;
+
+    const amount = parseInt(document.getElementById('modal-amount-input').value) || 0;
+    const type = document.getElementById('modal-trans-type').value;
+
+    if (amount <= 0) {
+        showToast('Kérlek adj meg egy érvényes összeget!');
+        return;
+    }
+
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
+
+    const userTrans = transactions[selectedPaymentUsername] || [];
+    userTrans.push({
+        amount: amount,
+        date: dateStr,
+        type: type
+    });
+
+    const { db, ref, set } = window.FB;
+    set(ref(db, `transactions/${selectedPaymentUsername}`), userTrans);
+    closePaymentModal();
+    showToast('Befizetés sikeresen rögzítve!');
+}
+
+function openTreasuryModal() {
+    if (!isAdmin) return;
+    document.getElementById('treasury-amount-input').value = 10000;
+    document.getElementById('treasury-note-input').value = '';
+    document.getElementById('treasury-trans-type').value = 'income';
+    
+    renderModalTreasuryTransactions();
+    document.getElementById('treasury-modal').classList.remove('hidden');
+}
+
+function renderModalTreasuryTransactions() {
+    const lastTransContainer = document.getElementById('modal-treasury-last-trans');
+    lastTransContainer.innerHTML = '';
+    const last3 = [...treasury].slice(-3).reverse();
+
+    if (last3.length === 0) {
+        lastTransContainer.innerHTML = `<span class="text-[11px] text-gray-400 italic">Nincs még kassza mozgás.</span>`;
+        return;
+    }
+
+    last3.forEach((t) => {
+        const originalIndex = treasury.indexOf(t);
+        const isPos = t.amount >= 0;
+
+        const div = document.createElement('div');
+        div.className = 'flex justify-between items-center bg-gray-50 p-1.5 rounded text-[11px]';
+        div.innerHTML = `
+            <div>
+                <span class="text-gray-500">${t.date} (${t.note || 'Mozgás'})</span>
+                <span class="font-bold ml-1 ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>
+            </div>
+            <button type="button" class="btn-del-treasury-trans text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded bg-red-50 font-bold" title="Mozgás törlése">
+                <i class="fa-solid fa-trash text-[10px]"></i>
+            </button>
+        `;
+
+        div.querySelector('.btn-del-treasury-trans').addEventListener('click', () => {
+            deleteTreasuryTransaction(originalIndex);
+        });
+
+        lastTransContainer.appendChild(div);
+    });
+}
+
+function deleteTreasuryTransaction(index) {
+    if (!confirm('Biztosan törlöd ezt a kassza mozgást?')) return;
+    treasury.splice(index, 1);
+
+    const { db, ref, set } = window.FB;
+    set(ref(db, 'treasury'), treasury);
+
+    renderModalTreasuryTransactions();
+    showToast('Kassza mozgás törölve.');
+}
+
+function closeTreasuryModal() {
+    document.getElementById('treasury-modal').classList.add('hidden');
+}
+
+function saveTreasuryTransaction() {
+    if (!isAdmin) return;
+
+    const type = document.getElementById('treasury-trans-type').value;
+    let amount = parseInt(document.getElementById('treasury-amount-input').value) || 0;
+    const note = document.getElementById('treasury-note-input').value.trim() || (type === 'income' ? 'Bevétel' : 'Kiadás');
+
+    if (amount <= 0) {
+        showToast('Kérlek adj meg egy érvényes összeget!');
+        return;
+    }
+
+    if (type === 'expense') {
+        amount = -amount;
+    }
+
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
+
+    const newTreasury = [...treasury, { amount, date: dateStr, type, note }];
+
+    const { db, ref, set } = window.FB;
+    set(ref(db, 'treasury'), newTreasury);
+    closeTreasuryModal();
+    showToast('Kassza mozgás rögzítve!');
+}
+
 function renderStandings() {
     const tbody = document.getElementById('standings-tbody');
     tbody.innerHTML = '';
@@ -471,8 +898,6 @@ function renderStandings() {
     });
 
     const filteredMatches = matches.filter(m => m.date && m.date.startsWith(selectedYear.toString()));
-
-    filteredMatches.dates = filteredMatches; // Referencia
 
     filteredMatches.forEach(m => {
         const scoreA = parseInt(m.scoreA);
@@ -513,7 +938,6 @@ function renderStandings() {
     let maxGoals = Math.max(...sorted.map(s => s.G), 0);
 
     sorted.forEach((st, idx) => {
-        // Tűz / Hópehely kiszámítása a GF (sorozat) oszlophoz
         let streakBadge = '-';
         if (st.matchesList.length >= 2) {
             let scoreStreak = 0;
@@ -547,8 +971,11 @@ function renderStandings() {
             else formHtml += `<span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mx-0.5"></span>`;
         });
 
+        const isMe = currentUser && currentUser.username === st.username;
+        const rowBgClass = isMe ? 'bg-emerald-50/80 font-bold border-l-4 border-emerald-500' : 'hover:bg-gray-50/80';
+
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-gray-50/80 transition';
+        tr.className = `${rowBgClass} transition`;
         tr.innerHTML = `
             <td class="py-3 px-3 text-xs text-gray-400 font-bold">${idx + 1}</td>
             <td class="py-3 px-3 font-semibold text-gray-800">${formatHungarianName(st.name)}${topScorerBadge}</td>
@@ -578,43 +1005,33 @@ function renderAwards(sortedPlayers, filteredMatches) {
         return;
     }
 
-    // 1. Bajnok (Holtverseny támogatás, meccs szám nem számít)
     const maxPoints = Math.max(...sortedPlayers.map(p => p.P));
     const champions = sortedPlayers.filter(p => p.P === maxPoints);
     const championNames = champions.map(c => formatHungarianName(c.name)).join(', ');
 
-    // 2. Gólkirály (Holtverseny támogatás, meccs szám nem számít)
     const maxGoals = Math.max(...sortedPlayers.map(p => p.G));
     const topScorers = sortedPlayers.filter(p => p.G === maxGoals && p.G > 0);
     const topScorerNames = topScorers.length > 0 ? topScorers.map(s => formatHungarianName(s.name)).join(', ') : '-';
 
-    // 3. Legjobb P/M (min. 2 meccs)
     const validPM = sortedPlayers.filter(s => s.M >= 2);
     const bestPMPlayer = validPM.length > 0 ? [...validPM].sort((a, b) => (b.P / b.M) - (a.P / a.M))[0] : sortedPlayers[0];
 
-    // 4. Legjobb G/M (min. 2 meccs)
     const validGM = sortedPlayers.filter(s => s.M >= 2);
     const bestGMPlayer = validGM.length > 0 ? [...validGM].sort((a, b) => (b.G / b.M) - (a.G / a.M))[0] : sortedPlayers[0];
 
-    // 5. Legtöbb gól egy meccsen
     const bestSingleMatchScorer = [...sortedPlayers].sort((a, b) => b.maxGoalsInSingleMatch - a.maxGoalsInSingleMatch)[0];
-
-    // 6. Legtöbb győztes meccs száma
     const mostWinsPlayer = [...sortedPlayers].sort((a, b) => b.W - a.W)[0];
 
-    // 7. A Fal (min. 2 meccs)
     const validDefenders = sortedPlayers.filter(s => s.M >= 2);
     const bestDefender = validDefenders.length > 0 
         ? [...validDefenders].sort((a, b) => (a.goalsAgainst / a.M) - (b.goalsAgainst / b.M))[0]
         : sortedPlayers[0];
 
-    // 8. Győzelmi Garancia (min. 2 meccs)
     const validWinRate = sortedPlayers.filter(s => s.M >= 2);
     const bestWinRate = validWinRate.length > 0
         ? [...validWinRate].sort((a, b) => (b.W / b.M) - (a.W / a.M))[0]
         : sortedPlayers[0];
 
-    // 9. Megállíthatatlan
     let bestStreakPlayer = sortedPlayers[0];
     let maxStreak = -1;
     sortedPlayers.forEach(p => {
@@ -896,29 +1313,34 @@ function saveMatchResults() {
     const teamB = [];
     let scoreA = 0;
     let scoreB = 0;
+    const participantsUsernames = [];
 
     teamAEls.forEach(row => {
         const goals = parseInt(row.querySelector('.player-goals').innerText || 0);
         const isSub = row.dataset.isSubstitute === 'true';
+        const uname = row.dataset.username;
         teamA.push({
-            username: isSub ? '' : row.dataset.username,
+            username: isSub ? '' : uname,
             name: row.dataset.name,
             goals,
             isSubstitute: isSub
         });
         scoreA += goals;
+        if (!isSub && uname) participantsUsernames.push(uname);
     });
 
     teamBEls.forEach(row => {
         const goals = parseInt(row.querySelector('.player-goals').innerText || 0);
         const isSub = row.dataset.isSubstitute === 'true';
+        const uname = row.dataset.username;
         teamB.push({
-            username: isSub ? '' : row.dataset.username,
+            username: isSub ? '' : uname,
             name: row.dataset.name,
             goals,
             isSubstitute: isSub
         });
         scoreB += goals;
+        if (!isSub && uname) participantsUsernames.push(uname);
     });
 
     const matchRecord = {
@@ -936,6 +1358,26 @@ function saveMatchResults() {
     } else {
         matches.push(matchRecord);
 
+        const feeDeduction = -(nextMatch.feePerPerson || 1000);
+        participantsUsernames.forEach(uname => {
+            const userTrans = transactions[uname] || [];
+            userTrans.push({
+                amount: feeDeduction,
+                date: matchDateStr,
+                type: 'match'
+            });
+            set(ref(db, `transactions/${uname}`), userTrans);
+        });
+
+        const courtFeeAmount = -(nextMatch.courtFee || 18000);
+        const newTreasury = [...treasury, {
+            amount: courtFeeAmount,
+            date: matchDateStr,
+            type: 'expense',
+            note: 'Pályadíj'
+        }];
+        set(ref(db, 'treasury'), newTreasury);
+
         const dateParts = nextMatch.date.replace(/\./g, '').trim().split(' ');
         if (dateParts.length === 3) {
             const currentD = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
@@ -952,10 +1394,12 @@ function saveMatchResults() {
 
     set(ref(db, 'matches'), matches);
     closeMatchMode();
-    showToast('Meccs sikeresen rögzítve!');
+    showToast('Meccs rögzítve, pénzügyek frissítve!');
 }
 
 function openEditMatchDateModal() {
+    document.getElementById('modal-match-fee').value = nextMatch.courtFee || 18000;
+    document.getElementById('modal-match-fee-person').value = nextMatch.feePerPerson || 1000;
     document.getElementById('edit-date-modal').classList.remove('hidden');
 }
 
@@ -967,17 +1411,21 @@ function saveNextMatchDateModal() {
     const dateVal = document.getElementById('modal-match-date').value;
     const startVal = document.getElementById('modal-match-start').value;
     const endVal = document.getElementById('modal-match-end').value;
+    const feeVal = document.getElementById('modal-match-fee').value;
+    const feePersonVal = document.getElementById('modal-match-fee-person').value;
 
     if (dateVal) {
         nextMatch.date = dateVal.replace(/-/g, '. ') + '.';
     }
     if (startVal) nextMatch.startTime = startVal;
     if (endVal) nextMatch.endTime = endVal;
+    if (feeVal) nextMatch.courtFee = parseInt(feeVal) || 18000;
+    if (feePersonVal) nextMatch.feePerPerson = parseInt(feePersonVal) || 1000;
 
     const { db, ref, set } = window.FB;
     set(ref(db, 'nextMatch'), nextMatch);
     closeEditMatchDateModal();
-    showToast('Időpont frissítve!');
+    showToast('Beállítások frissítve!');
 }
 
 function showToast(msg) {
