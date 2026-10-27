@@ -145,10 +145,18 @@
                     <div class="mb-2">
                         <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">Következő Meccs</span>
                         <h3 id="next-match-date-display" class="text-xl sm:text-2xl font-extrabold text-gray-800 mt-2">2026. 10. 27. 09:00 - 10:00</h3>
-                        <p id="next-match-fee-info" class="text-xs text-gray-400 mt-1 flex items-center justify-center space-x-1">
+                        <p id="next-match-location-display" class="text-xs text-gray-500 mt-1 flex items-center justify-center space-x-1">
+                            <i class="fa-solid fa-location-dot text-emerald-600"></i>
+                            <span id="next-match-location-text">ELTE Sport Kft Bogdánfy úti sporttelep</span>
+                        </p>
+                        <p id="next-match-fee-info" class="text-xs text-gray-400 mt-1 flex items-center justify-center space-x-1.5">
                             <span>18 000 Ft</span>
                             <span>•</span>
                             <span><i class="fa-solid fa-user text-gray-300 mr-0.5"></i> 1 000 Ft / fő</span>
+                            <span>•</span>
+                            <button id="calendar-export-btn" class="text-gray-400 hover:text-gray-700 transition" title="Google Naptár esemény létrehozása">
+                                <i class="fa-solid fa-calendar-plus text-sm"></i>
+                            </button>
                         </p>
                     </div>
 
@@ -178,6 +186,45 @@
                     </p>
                 </section>
 
+                <!-- MATCH RECORDING SECTION -->
+                <section id="match-mode-section" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-xl hidden relative">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                        <h3 class="text-lg font-bold text-gray-900"><i class="fa-solid fa-sliders text-emerald-600 mr-2"></i>Meccs Rögzítése & Csapatok</h3>
+                        <button id="close-match-mode-btn" class="text-xs text-gray-500 hover:text-gray-900 bg-gray-100 px-3 py-1.5 rounded-lg">Bezárás</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
+                                <h4 class="font-bold text-emerald-700">A Csapat</h4>
+                                <div class="bg-white border border-gray-200 px-3 py-1 rounded-full shadow-2xs">
+                                    <span class="text-xs text-gray-400 mr-1">Gól:</span>
+                                    <strong id="team-a-score" class="text-base text-gray-900">0</strong>
+                                </div>
+                            </div>
+                            <div id="team-a-players" class="space-y-2 mb-4 min-h-[100px]"></div>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
+                                <div class="bg-white border border-gray-200 px-3 py-1 rounded-full shadow-2xs">
+                                    <span class="text-xs text-gray-400 mr-1">Gól:</span>
+                                    <strong id="team-b-score" class="text-base text-gray-900">0</strong>
+                                </div>
+                                <h4 class="font-bold text-indigo-700 text-right">B Csapat</h4>
+                            </div>
+                            <div id="team-b-players" class="space-y-2 mb-4 min-h-[100px]"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                        <span id="match-mode-date-label" class="text-xs text-gray-500">Dátum: 2026. 10. 27.</span>
+                        <button id="save-match-results-btn" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm transition shadow-sm">
+                            Eredmény Mentése
+                        </button>
+                    </div>
+                </section>
+
                 <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row justify-between items-center pb-4 border-b border-gray-100 mb-4 gap-2">
                         <div>
@@ -185,15 +232,20 @@
                             <p class="text-xs text-gray-400">Aktuális heti állapot</p>
                         </div>
 
-                        <div id="attending-badge-container" class="border rounded-xl px-4 py-2 text-center transition-colors bg-amber-50 border-amber-100 text-amber-700">
-                            <span class="text-xs font-bold uppercase block">Létszám</span>
-                            <span id="attending-count" class="text-3xl font-black">0</span>
+                        <div class="w-full sm:w-auto flex justify-center">
+                            <div id="attending-badge-container" class="border rounded-xl px-6 py-2 text-center transition-colors bg-amber-50 border-amber-100 text-amber-700">
+                                <span class="text-xs font-bold uppercase block">Létszám</span>
+                                <span id="attending-count" class="text-3xl font-black">0</span>
+                            </div>
                         </div>
                     </div>
 
                     <div id="attendees-list" class="divide-y divide-gray-50 max-h-96 overflow-y-auto pr-1"></div>
 
                     <div id="admin-controls" class="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-2 justify-end hidden">
+                        <button id="add-player-btn" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl text-xs transition shadow-sm">
+                            <i class="fa-solid fa-user-plus mr-1"></i> Játékos hozzáadása
+                        </button>
                         <button id="add-general-sub-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition shadow-sm">
                             <i class="fa-solid fa-user-plus mr-1"></i> Beugró hozzáadása
                         </button>
@@ -243,10 +295,15 @@
                     </div>
 
                     <div id="admin-finances-container" class="hidden border-t border-gray-100 pt-4 space-y-4">
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-purple-600 flex items-center justify-between">
-                            <span>Játékosok Egyenlege (Befizetéshez kattints)</span>
-                            <span class="text-[10px] font-normal text-gray-400">Elöl a legutóbbi résztvevők</span>
-                        </h4>
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-purple-600">
+                                <span>Játékosok Egyenlege (Befizetéshez kattints)</span>
+                            </h4>
+                            <button id="export-finances-btn" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg text-xs transition flex items-center space-x-1.5">
+                                <i class="fa-solid fa-file-export"></i>
+                                <span>Exportálás</span>
+                            </button>
+                        </div>
                         <div id="all-users-balances-list" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
                     </div>
                 </section>
@@ -328,45 +385,6 @@
                     <div id="awards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
                 </section>
             </div>
-
-            <!-- MATCH RECORDING SECTION -->
-            <section id="match-mode-section" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-xl hidden relative">
-                <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
-                    <h3 class="text-lg font-bold text-gray-900"><i class="fa-solid fa-sliders text-emerald-600 mr-2"></i>Meccs Rögzítése & Csapatok</h3>
-                    <button id="close-match-mode-btn" class="text-xs text-gray-500 hover:text-gray-900 bg-gray-100 px-3 py-1.5 rounded-lg">Bezárás</button>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
-                            <h4 class="font-bold text-emerald-700">A Csapat</h4>
-                            <div class="bg-white border border-gray-200 px-3 py-1 rounded-full shadow-2xs">
-                                <span class="text-xs text-gray-400 mr-1">Gól:</span>
-                                <strong id="team-a-score" class="text-base text-gray-900">0</strong>
-                            </div>
-                        </div>
-                        <div id="team-a-players" class="space-y-2 mb-4 min-h-[100px]"></div>
-                    </div>
-
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <div class="flex justify-between items-center mb-3 border-b border-gray-200 pb-2">
-                            <div class="bg-white border border-gray-200 px-3 py-1 rounded-full shadow-2xs">
-                                <span class="text-xs text-gray-400 mr-1">Gól:</span>
-                                <strong id="team-b-score" class="text-base text-gray-900">0</strong>
-                            </div>
-                            <h4 class="font-bold text-indigo-700 text-right">B Csapat</h4>
-                        </div>
-                        <div id="team-b-players" class="space-y-2 mb-4 min-h-[100px]"></div>
-                    </div>
-                </div>
-
-                <div class="flex justify-between items-center pt-4 border-t border-gray-100">
-                    <span id="match-mode-date-label" class="text-xs text-gray-500">Dátum: 2026. 10. 27.</span>
-                    <button id="save-match-results-btn" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm transition shadow-sm">
-                        Eredmény Mentése
-                    </button>
-                </div>
-            </section>
         </div>
     </main>
 
@@ -399,6 +417,18 @@
             <div class="flex space-x-2 pt-2">
                 <button id="close-payment-modal-btn" type="button" class="w-1/2 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">Mégse</button>
                 <button id="save-payment-btn" type="button" class="w-1/2 py-2.5 bg-emerald-600 text-white font-semibold rounded-xl text-sm hover:bg-emerald-700 transition">Könyvelés</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD PLAYER MODAL -->
+    <div id="add-player-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-gray-100 space-y-4">
+            <h3 class="text-lg font-bold text-gray-800">Regisztrált játékos hozzáadása</h3>
+            <p class="text-xs text-gray-400">Vlaszd ki a játékost, akit szeretnél bejelölni a következő meccsre ("Ott leszek"):</p>
+            <div id="add-player-modal-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+            <div class="pt-2">
+                <button id="close-add-player-modal-btn" type="button" class="w-full py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">Bezárás</button>
             </div>
         </div>
     </div>
@@ -480,6 +510,10 @@
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Vég</label>
                     <input type="time" id="modal-match-end" class="w-full px-3 py-2 rounded-xl border text-sm">
                 </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Pálya</label>
+                <input type="text" id="modal-match-location" class="w-full px-3 py-2 rounded-xl border text-sm" value="ELTE Sport Kft Bogdánfy úti sporttelep">
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <div>

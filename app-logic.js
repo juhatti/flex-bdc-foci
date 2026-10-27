@@ -124,14 +124,14 @@ function renderAwards(sortedPlayers, filteredMatches) {
 
     awardsList.forEach(a => {
         const card = document.createElement('div');
-        card.className = `award-card p-4 rounded-xl border ${a.color} flex flex-col justify-between cursor-pointer shadow-2xs`;
+        card.className = `award-card p-4 rounded-xl border ${a.color} flex flex-col justify-between cursor-pointer shadow-2xs relative`;
         card.innerHTML = `
             <div>
                 <div class="flex justify-between items-center mb-1"><span class="text-xs font-bold uppercase tracking-wider">${a.title}</span><i class="fa-solid fa-circle-question text-xs opacity-60"></i></div>
                 <div class="text-base font-black mt-1 leading-snug">${a.name}</div>
             </div>
             <div class="text-xs font-semibold opacity-90 mt-2 pt-2 border-t border-black/5">${a.val}</div>
-            <div class="award-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-52 p-2.5 bg-gray-900 text-white text-[11px] rounded-xl shadow-xl pointer-events-none text-center z-30 hidden">${a.def}</div>
+            <div class="award-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-52 p-2.5 bg-gray-900 text-white text-[11px] rounded-xl shadow-xl text-center">${a.def}</div>
         `;
         container.appendChild(card);
     });

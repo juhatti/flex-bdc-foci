@@ -3,7 +3,15 @@ window.AppState = {
     currentUser: null,
     isAdmin: false,
     users: {},
-    nextMatch: { date: "2026. 10. 27.", startTime: "09:00", endTime: "10:00", courtFee: 18000, feePerPerson: 1000, attendances: {} },
+    nextMatch: { 
+        date: "2026. 10. 27.", 
+        startTime: "09:00", 
+        endTime: "10:00", 
+        location: "ELTE Sport Kft Bogdánfy úti sporttelep",
+        courtFee: 18000, 
+        feePerPerson: 1000, 
+        attendances: {} 
+    },
     matches: [],
     transactions: {},
     treasury: [],

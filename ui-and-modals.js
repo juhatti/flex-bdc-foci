@@ -21,6 +21,7 @@ function initFirebaseListeners() {
             if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
             if (!state.nextMatch.courtFee) state.nextMatch.courtFee = 18000;
             if (!state.nextMatch.feePerPerson) state.nextMatch.feePerPerson = 1000;
+            if (!state.nextMatch.location) state.nextMatch.location = "ELTE Sport Kft Bogdánfy úti sporttelep";
         }
         renderApp();
     });
@@ -56,11 +57,15 @@ function bindEvents() {
     document.getElementById('open-match-mode-btn').addEventListener('click', () => openMatchMode());
     document.getElementById('close-match-mode-btn').addEventListener('click', closeMatchMode);
     document.getElementById('add-general-sub-btn').addEventListener('click', addGeneralSubstitute);
+    document.getElementById('add-player-btn').addEventListener('click', openAddPlayerModal);
+    document.getElementById('close-add-player-modal-btn').addEventListener('click', closeAddPlayerModal);
     document.getElementById('save-match-results-btn').addEventListener('click', saveMatchResults);
     document.getElementById('prev-match-btn').addEventListener('click', prevMatchPage);
     document.getElementById('next-match-btn').addEventListener('click', nextMatchPage);
     document.getElementById('close-date-modal-btn').addEventListener('click', closeEditMatchDateModal);
     document.getElementById('save-date-modal-btn').addEventListener('click', saveNextMatchDateModal);
+    document.getElementById('calendar-export-btn').addEventListener('click', exportToGoogleCalendar);
+    document.getElementById('export-finances-btn').addEventListener('click', exportFinancesList);
 
     // Navigációs fülek
     document.getElementById('nav-tab-matches').addEventListener('click', () => switchTab('matches'));
@@ -101,6 +106,8 @@ function bindEvents() {
 function switchTab(tabName) {
     const state = window.AppState;
     state.activeTab = tabName;
+    closeMatchMode();
+
     const matchesTab = document.getElementById('tab-content-matches');
     const financesTab = document.getElementById('tab-content-finances');
     const standingsTab = document.getElementById('tab-content-standings');
@@ -388,6 +395,7 @@ function renderApp() {
 function renderNextMatchCard() {
     const state = window.AppState;
     document.getElementById('next-match-date-display').innerText = `${state.nextMatch.date} ${state.nextMatch.startTime} - ${state.nextMatch.endTime}`;
+    document.getElementById('next-match-location-text').innerText = state.nextMatch.location || "ELTE Sport Kft Bogdánfy úti sporttelep";
     
     const fee = state.nextMatch.courtFee || 18000;
     const perPerson = state.nextMatch.feePerPerson || 1000;
@@ -395,7 +403,12 @@ function renderNextMatchCard() {
         <span>${fee.toLocaleString()} Ft</span>
         <span>•</span>
         <span><i class="fa-solid fa-user text-gray-300 mr-0.5"></i> ${perPerson.toLocaleString()} Ft / fő</span>
+        <span>•</span>
+        <button id="calendar-export-btn" class="text-gray-400 hover:text-gray-700 transition" title="Google Naptár esemény létrehozása">
+            <i class="fa-solid fa-calendar-plus text-sm"></i>
+        </button>
     `;
+    document.getElementById('calendar-export-btn').addEventListener('click', exportToGoogleCalendar);
 
     if (!state.currentUser) return;
     const myAtt = state.nextMatch.attendances[state.currentUser.username] || { status: 'maybe', note: '' };
@@ -406,6 +419,23 @@ function renderNextMatchCard() {
     else if (myAtt.status === 'yes') thumb.classList.add('pos-right');
 
     document.getElementById('user-note').value = myAtt.note || '';
+}
+
+function exportToGoogleCalendar() {
+    const state = window.AppState;
+    const dateStr = state.nextMatch.date.replace(/\./g, '').trim().replace(/ /g, '');
+    const startTime = (state.nextMatch.startTime || "09:00").replace(':', '');
+    const endTime = (state.nextMatch.endTime || "10:00").replace(':', '');
+    
+    const startIso = `${dateStr}T${startTime}00`;
+    const endIso = `${dateStr}T${endTime}00`;
+    
+    const title = encodeURIComponent("Flex BDC Foci");
+    const location = encodeURIComponent(state.nextMatch.location || "ELTE Sport Kft Bogdánfy úti sporttelep");
+    const details = encodeURIComponent("Részletek: https://juhatti.github.io/flex-bdc-foci/");
+    
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startIso}/${endIso}&location=${location}&details=${details}`;
+    window.open(url, '_blank');
 }
 
 function renderAttendeesList() {
@@ -472,7 +502,7 @@ function renderAttendeesList() {
 
     const badgeContainer = document.getElementById('attending-badge-container');
     document.getElementById('attending-count').innerText = yesCount;
-    badgeContainer.className = `border rounded-xl px-4 py-2 text-center transition-colors ${yesCount < 8 ? 'bg-red-50 border-red-100 text-red-700' : yesCount <= 9 ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'}`;
+    badgeContainer.className = `border rounded-xl px-6 py-2 text-center transition-colors ${yesCount < 8 ? 'bg-red-50 border-red-100 text-red-700' : yesCount <= 9 ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'}`;
 }
 
 function addGeneralSubstitute() {
@@ -482,6 +512,43 @@ function addGeneralSubstitute() {
     const { db, ref, set } = window.FB;
     set(ref(db, `nextMatch/attendances/${subKey}`), { status: 'yes', note: '', name: subName.trim(), isSubstitute: true });
     showToast('Beugró hozzáadva!');
+}
+
+function openAddPlayerModal() {
+    const state = window.AppState;
+    if (!state.isAdmin) return;
+    
+    const container = document.getElementById('add-player-modal-list');
+    container.innerHTML = '';
+    
+    const currentAttendees = state.nextMatch.attendances || {};
+    const unlistedUsers = Object.values(state.users).filter(u => !currentAttendees[u.username]);
+
+    if (unlistedUsers.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">Minden regisztrált játékos szerepel már a listán.</p>`;
+    } else {
+        unlistedUsers.forEach(u => {
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center bg-gray-50 p-2 rounded-xl text-xs hover:bg-emerald-50 transition border border-gray-100';
+            div.innerHTML = `
+                <span class="font-semibold text-gray-800">${u.name}</span>
+                <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-2xs">Hozzáadás</button>
+            `;
+            div.querySelector('button').addEventListener('click', () => {
+                const { db, ref, set } = window.FB;
+                set(ref(db, `nextMatch/attendances/${u.username}`), { status: 'yes', note: '', name: u.name });
+                showToast(`${u.name} hozzáadva a meccshez!`);
+                closeAddPlayerModal();
+            });
+            container.appendChild(div);
+        });
+    }
+
+    document.getElementById('add-player-modal').classList.remove('hidden');
+}
+
+function closeAddPlayerModal() {
+    document.getElementById('add-player-modal').classList.add('hidden');
 }
 
 function removeGeneralSubstitute(subKey) {
@@ -579,28 +646,15 @@ window.renderFinances = function() {
         const allBalList = document.getElementById('all-users-balances-list');
         allBalList.innerHTML = '';
 
-        const lastMatch = state.matches.length > 0 ? state.matches[state.matches.length - 1] : null;
-        const recentUsernames = new Set();
-        if (lastMatch) {
-            (lastMatch.teamA || []).forEach(p => { if (p.username) recentUsernames.add(p.username); });
-            (lastMatch.teamB || []).forEach(p => { if (p.username) recentUsernames.add(p.username); });
-        }
-
         const allUsersArr = Object.values(state.users);
-        const renderUserRow = (u) => {
+        allUsersArr.forEach(u => {
             const bal = balances[u.username] || 0;
             const row = document.createElement('div');
             row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 hover:bg-purple-50/50 cursor-pointer border border-gray-100 transition text-xs';
             row.innerHTML = `<span class="font-semibold text-gray-800">${window.formatHungarianName(u.name)}</span><span class="font-bold px-2 py-0.5 rounded-md text-[11px] ${bal >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">${bal >= 0 ? '+' : ''}${bal.toLocaleString()} Ft</span>`;
             row.addEventListener('click', () => openPaymentModal(u.username, u.name, bal));
             allBalList.appendChild(row);
-        };
-
-        allUsersArr.filter(u => recentUsernames.has(u.username)).forEach(renderUserRow);
-        if (recentUsernames.size > 0 && allUsersArr.filter(u => !recentUsernames.has(u.username)).length > 0) {
-            allBalList.appendChild(Object.assign(document.createElement('hr'), { className: 'my-2 border-gray-200' }));
-        }
-        allUsersArr.filter(u => !recentUsernames.has(u.username)).forEach(renderUserRow);
+        });
     } else {
         adminFinSec.classList.add('hidden');
     }
@@ -622,6 +676,32 @@ window.renderFinances = function() {
     const treasuryModalBtn = document.getElementById('open-treasury-modal-btn');
     if (state.isAdmin) treasuryModalBtn.classList.remove('hidden');
     else treasuryModalBtn.classList.add('hidden');
+}
+
+function exportFinancesList() {
+    const state = window.AppState;
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
+
+    let text = `Egyenlegek - ${dateStr}\n\n`;
+    
+    Object.values(state.users).forEach(u => {
+        const bal = (state.transactions[u.username] || []).reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+        text += `${u.name}: ${bal >= 0 ? '+' : ''}${bal.toLocaleString()} Ft\n`;
+    });
+
+    const treasuryBal = state.treasury.reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+    text += `\nCsapatkassza: ${treasuryBal >= 0 ? '+' : ''}${treasuryBal.toLocaleString()} Ft\n\nUtolsó 3 kasszamozgás:\n`;
+
+    [...state.treasury].slice(-3).reverse().forEach(t => {
+        text += `- ${t.date}: ${t.note || 'Mozgás'} (${t.amount >= 0 ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft)\n`;
+    });
+
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Pénzügyi lista a vágólapra másolva!');
+    }).catch(() => {
+        alert(text);
+    });
 }
 
 function openPaymentModal(username, name, currentBal) {
@@ -734,6 +814,7 @@ function saveTreasuryTransaction() {
 function openEditMatchDateModal() {
     document.getElementById('modal-match-fee').value = window.AppState.nextMatch.courtFee || 18000;
     document.getElementById('modal-match-fee-person').value = window.AppState.nextMatch.feePerPerson || 1000;
+    document.getElementById('modal-match-location').value = window.AppState.nextMatch.location || "ELTE Sport Kft Bogdánfy úti sporttelep";
     document.getElementById('edit-date-modal').classList.remove('hidden');
 }
 function closeEditMatchDateModal() { document.getElementById('edit-date-modal').classList.add('hidden'); }
@@ -743,6 +824,7 @@ function saveNextMatchDateModal() {
     if (dateVal) next.date = dateVal.replace(/-/g, '. ') + '.';
     next.startTime = document.getElementById('modal-match-start').value || next.startTime;
     next.endTime = document.getElementById('modal-match-end').value || next.endTime;
+    next.location = document.getElementById('modal-match-location').value.trim() || "ELTE Sport Kft Bogdánfy úti sporttelep";
     next.courtFee = parseInt(document.getElementById('modal-match-fee').value) || 18000;
     next.feePerPerson = parseInt(document.getElementById('modal-match-fee-person').value) || 1000;
 
@@ -833,12 +915,11 @@ function saveMatchResults() {
     const teamBEls = document.querySelectorAll('#team-b-players .player-row');
     if (teamAEls.length === 0 || teamBEls.length === 0) return showToast('Mindkét csapatban kell játékos!');
 
-    // VÉDELEM: Csak akkor engedjük menteni, ha a meccs dátuma és kezdési időpontja már eltelt (vagy múltbeli meccset szerkesztünk)
     if (state.editingMatchIndex === null) {
-        const matchDateStr = state.nextMatch.date; // pl. "2026. 10. 27."
-        const matchTimeStr = state.nextMatch.startTime || "00:00"; // pl. "09:00"
+        const matchDateStr = state.nextMatch.date;
+        const matchTimeStr = state.nextMatch.startTime || "00:00";
         
-        const cleanDateStr = matchDateStr.replace(/\./g, '').trim().replace(/ /g, '-'); // "2026-10-27"
+        const cleanDateStr = matchDateStr.replace(/\./g, '').trim().replace(/ /g, '-');
         const matchDateTimeString = `${cleanDateStr}T${matchTimeStr}:00`;
         const matchDateTime = new Date(matchDateTimeString);
         const now = new Date();
