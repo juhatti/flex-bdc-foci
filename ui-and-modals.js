@@ -51,7 +51,7 @@ function bindEvents() {
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('go-to-register').addEventListener('click', () => toggleAuthMode('register'));
     document.getElementById('go-to-login').addEventListener('click', () => toggleAuthMode('login'));
-    document.getElementById('tri-slider').addEventListener('click', cycleAttendance);
+    document.getElementById('tri-slider').addEventListener('click', handleSliderClick);
     document.getElementById('user-note').addEventListener('change', (e) => saveAttendanceNote(e.target.value));
     document.getElementById('edit-next-match-btn').addEventListener('click', openEditMatchDateModal);
     document.getElementById('open-match-mode-btn').addEventListener('click', () => openMatchMode());
@@ -287,11 +287,13 @@ function toggleAuthMode(mode) {
 function openEditEmailModal() {
     const state = window.AppState;
     if (!state.currentUser || state.currentUser.username === 'admin') return;
-    const parts = (state.currentUser.name || '').trim().split(/\s+/);
+    const userObj = state.users[state.currentUser.username] || state.currentUser;
+    const parts = (userObj.name || '').trim().split(/\s+/);
     document.getElementById('edit-lastname').value = parts[0] || '';
     document.getElementById('edit-firstname').value = parts.slice(1).join(' ') || '';
-    document.getElementById('edit-email').value = state.currentUser.email || '';
-    document.getElementById('edit-username').value = state.currentUser.username || '';
+    document.getElementById('edit-email').value = userObj.email || '';
+    document.getElementById('edit-username').value = userObj.username || '';
+    document.getElementById('edit-email-reminder').checked = Boolean(userObj.matchReminder);
     document.getElementById('edit-email-modal').classList.remove('hidden');
 }
 
@@ -309,23 +311,40 @@ function saveEditedEmail(e) {
         showToast('Kérlek add meg az email címet!');
         return;
     }
+    const wantReminder = document.getElementById('edit-email-reminder').checked;
 
     state.currentUser.email = newEmail;
-    state.users[state.currentUser.username].email = newEmail;
+    state.currentUser.matchReminder = wantReminder;
+    if (state.users[state.currentUser.username]) {
+        state.users[state.currentUser.username].email = newEmail;
+        state.users[state.currentUser.username].matchReminder = wantReminder;
+    }
 
     const { db, ref, set } = window.FB;
-    set(ref(db, `users/${state.currentUser.username}`), state.currentUser);
+    set(ref(db, `users/${state.currentUser.username}`), state.users[state.currentUser.username] || state.currentUser);
     saveSession();
     closeEditEmailModal();
-    showToast('Email cím sikeresen frissítve!');
+    showToast('Beállítások sikeresen frissítve!');
 }
 
-function cycleAttendance() {
+function handleSliderClick(e) {
     const state = window.AppState;
     if (!state.currentUser) return;
+    const option = e.target.closest('.tri-slider-option');
+    let nextStatus;
+    if (option && option.dataset.status) {
+        nextStatus = option.dataset.status;
+    } else {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const relX = e.clientX - rect.left;
+        if (relX < rect.width / 3) nextStatus = 'no';
+        else if (relX < (rect.width * 2) / 3) nextStatus = 'maybe';
+        else nextStatus = 'yes';
+    }
     const currentAtt = state.nextMatch.attendances[state.currentUser.username] || { status: 'maybe', note: '' };
-    let nextStatus = currentAtt.status === 'maybe' ? 'yes' : currentAtt.status === 'yes' ? 'no' : 'maybe';
-    updateAttendanceDB(state.currentUser.username, nextStatus, currentAtt.note);
+    if (currentAtt.status !== nextStatus) {
+        updateAttendanceDB(state.currentUser.username, nextStatus, currentAtt.note);
+    }
 }
 
 function saveAttendanceNote(val) {
