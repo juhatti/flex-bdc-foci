@@ -67,6 +67,7 @@ function bindEvents() {
     document.getElementById('edit-next-match-btn').addEventListener('click', openEditMatchDateModal);
     document.getElementById('open-match-mode-btn').addEventListener('click', () => openMatchMode());
     document.getElementById('close-match-mode-btn').addEventListener('click', closeMatchMode);
+    document.getElementById('toggle-swap-mode-btn').addEventListener('click', toggleSwapMode);
     document.getElementById('add-general-sub-btn').addEventListener('click', addGeneralSubstitute);
     document.getElementById('add-player-btn').addEventListener('click', openAddPlayerModal);
     document.getElementById('close-add-player-modal-btn').addEventListener('click', closeAddPlayerModal);
@@ -78,14 +79,12 @@ function bindEvents() {
     document.getElementById('calendar-export-btn').addEventListener('click', exportToGoogleCalendar);
     document.getElementById('export-finances-btn').addEventListener('click', exportFinancesList);
 
-    // Navigációs fülek
+    // Navigation tabs
     document.getElementById('nav-tab-matches').addEventListener('click', () => switchTab('matches'));
     document.getElementById('nav-tab-finances').addEventListener('click', () => switchTab('finances'));
     document.getElementById('nav-tab-standings').addEventListener('click', () => switchTab('standings'));
 
-    // Accordions & Transaction Pagination
-    
-    
+    // Transaction Pagination
     document.getElementById('prev-my-trans-btn').addEventListener('click', prevMyTransPage);
     document.getElementById('next-my-trans-btn').addEventListener('click', nextMyTransPage);
     document.getElementById('prev-treasury-btn').addEventListener('click', prevTreasuryPage);
@@ -158,10 +157,6 @@ function switchTab(tabName) {
         }
     }
 }
-
-
-
-
 
 window.selectYear = function(year) {
     const state = window.AppState;
@@ -657,8 +652,38 @@ function renderLastMatches() {
     pageMatches.forEach((m) => {
         const actualIndex = state.matches.indexOf(m);
         const resolveName = (p) => (p.id && state.users[String(p.id)]?.name) || p.name;
-        const teamAScorers = (m.teamA || []).filter(p => p.goals > 0).map(p => `${window.formatHungarianName(resolveName(p))} <span class="bg-emerald-50 text-emerald-800 border px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
-        const teamBScorers = (m.teamB || []).filter(p => p.goals > 0).map(p => `${window.formatHungarianName(resolveName(p))} <span class="bg-indigo-50 text-indigo-800 border px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
+
+        const formatPlayerEntry = (p, colorClass) => {
+            const name = window.formatHungarianName(resolveName(p));
+            const goals = parseInt(p.goals || 0);
+            if (goals > 0) {
+                return `${name} <span class="${colorClass} border px-1.5 py-0.5 rounded text-[10px] font-bold">${goals}</span>`;
+            }
+            return name;
+        };
+
+        // Split starting players and swapped players
+        const teamAStarters = (m.teamA || []).filter(p => !p.isSwapped);
+        const teamBStarters = (m.teamB || []).filter(p => !p.isSwapped);
+        const teamASwaps = (m.teamA || []).filter(p => p.isSwapped);
+        const teamBSwaps = (m.teamB || []).filter(p => p.isSwapped);
+
+        const teamAListHtml = teamAStarters.map(p => formatPlayerEntry(p, 'bg-emerald-50 text-emerald-800')).join(', ') || '-';
+        const teamBListHtml = teamBStarters.map(p => formatPlayerEntry(p, 'bg-indigo-50 text-indigo-800')).join(', ') || '-';
+
+        const hasSwaps = teamASwaps.length > 0 || teamBSwaps.length > 0;
+        let swapsRowHtml = '';
+        if (hasSwaps) {
+            const teamASwapsHtml = teamASwaps.map(p => formatPlayerEntry(p, 'bg-emerald-50 text-emerald-800')).join(', ') || '';
+            const teamBSwapsHtml = teamBSwaps.map(p => formatPlayerEntry(p, 'bg-indigo-50 text-indigo-800')).join(', ') || '';
+            swapsRowHtml = `
+                <div class="text-xs text-gray-500 mt-2 flex items-center justify-between px-4 border-t border-dashed border-gray-200 pt-2">
+                    <span class="w-5/12 text-left pr-2 text-emerald-700 font-medium">${teamASwapsHtml}</span>
+                    <span class="w-2/12 text-center text-purple-600" title="Csere meccs közben"><i class="fa-solid fa-right-left"></i></span>
+                    <span class="w-5/12 text-right pl-2 text-indigo-700 font-medium">${teamBSwapsHtml}</span>
+                </div>
+            `;
+        }
 
         const card = document.createElement('div');
         card.className = 'bg-gray-50 border border-gray-100 p-4 rounded-xl text-center relative shadow-2xs';
@@ -667,9 +692,10 @@ function renderLastMatches() {
             <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">${m.date}</div>
             <div class="text-2xl font-black text-gray-800 my-1">${m.scoreA} : ${m.scoreB}</div>
             <div class="text-xs text-gray-500 mt-2 flex justify-between px-4 border-t pt-2">
-                <span class="w-1/2 text-left pr-2 text-emerald-700 font-medium">${teamAScorers}</span>
-                <span class="w-1/2 text-right pl-2 text-indigo-700 font-medium">${teamBScorers}</span>
+                <span class="w-1/2 text-left pr-2 text-emerald-700 font-medium">${teamAListHtml}</span>
+                <span class="w-1/2 text-right pl-2 text-indigo-700 font-medium">${teamBListHtml}</span>
             </div>
+            ${swapsRowHtml}
         `;
         if (state.isAdmin) card.querySelector('.btn-edit-match').addEventListener('click', () => openMatchMode(actualIndex));
         container.appendChild(card);
@@ -714,19 +740,19 @@ window.renderFinances = function() {
     const myBalText = `${myBal > 0 ? '+' : ''}${myBal.toLocaleString()} Ft`;
     const badgeColorClass = myBal >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800';
 
-    // Fejléc badge frissítése
+    // Update header balance badge
     const headerBalBadge = document.getElementById('header-balance-badge');
     if (headerBalBadge) {
         document.getElementById('header-balance-amount').innerText = myBalText;
         headerBalBadge.className = `px-2.5 py-1 rounded-lg border font-bold text-[11px] ${badgeColorClass}`;
     }
 
-    // Pénzügyek oldal badge frissítése
+    // Update finances page balance badge
     const myBalBadge = document.getElementById('my-balance-badge');
     document.getElementById('my-balance-amount').innerText = myBalText;
     myBalBadge.className = `px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs ${badgeColorClass}`;
 
-    // Saját tranzakciók lapozva (3/oldal)
+    // Paginate user's own transactions (3 per page)
     const myTransList = document.getElementById('my-transactions-list');
     const myTransPagination = document.getElementById('my-trans-pagination');
     myTransList.innerHTML = '';
@@ -784,7 +810,7 @@ window.renderFinances = function() {
     document.getElementById('treasury-balance-amount').innerText = `${treasuryBal > 0 ? '+' : ''}${treasuryBal.toLocaleString()} Ft`;
     document.getElementById('treasury-balance-badge').className = `px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs ${treasuryBal >= 0 ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-800'}`;
 
-    // Kassza mozgások lapozva (3/oldal)
+    // Paginate treasury transactions (3 per page)
     const treasuryList = document.getElementById('treasury-transactions-list');
     const treasuryPagination = document.getElementById('treasury-pagination');
     treasuryList.innerHTML = '';
@@ -982,25 +1008,117 @@ function openMatchMode(matchIndex = null) {
     const state = window.AppState;
     if (!state.isAdmin) return;
     state.editingMatchIndex = matchIndex;
+    state.isSwapModeActive = false;
+
+    const swapToggleBtn = document.getElementById('toggle-swap-mode-btn');
+    swapToggleBtn.className = 'px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition flex items-center space-x-1.5 border border-gray-200';
+
     document.getElementById('match-mode-section').classList.remove('hidden');
     document.getElementById('match-mode-date-label').innerText = `Dátum: ${matchIndex !== null ? state.matches[matchIndex].date : state.nextMatch.date}`;
 
     const teamAContainer = document.getElementById('team-a-players');
     const teamBContainer = document.getElementById('team-b-players');
-    teamAContainer.innerHTML = ''; teamBContainer.innerHTML = '';
+    const teamASwaps = document.getElementById('team-a-swaps');
+    const teamBSwaps = document.getElementById('team-b-swaps');
 
-    let activeList = [];
+    teamAContainer.innerHTML = '';
+    teamBContainer.innerHTML = '';
+    teamASwaps.innerHTML = '';
+    teamBSwaps.innerHTML = '';
+
+    document.getElementById('team-a-swaps-wrapper').classList.add('hidden');
+    document.getElementById('team-b-swaps-wrapper').classList.add('hidden');
+
+    let starterList = [];
+    let swapList = [];
+
     if (matchIndex !== null) {
-        (state.matches[matchIndex].teamA || []).forEach(p => activeList.push({ ...p, id: String(p.id || p.username || ''), team: 'A' }));
-        (state.matches[matchIndex].teamB || []).forEach(p => activeList.push({ ...p, id: String(p.id || p.username || ''), team: 'B' }));
+        (state.matches[matchIndex].teamA || []).forEach(p => {
+            const entry = { ...p, id: String(p.id || p.username || ''), team: 'A' };
+            if (p.isSwapped) swapList.push(entry);
+            else starterList.push(entry);
+        });
+        (state.matches[matchIndex].teamB || []).forEach(p => {
+            const entry = { ...p, id: String(p.id || p.username || ''), team: 'B' };
+            if (p.isSwapped) swapList.push(entry);
+            else starterList.push(entry);
+        });
     } else {
-        activeList = Object.entries(state.nextMatch.attendances || {})
+        starterList = Object.entries(state.nextMatch.attendances || {})
             .filter(([_, d]) => d.status === 'yes')
-            .map(([uid, d], idx) => ({ id: String(uid), name: state.users[uid]?.name || d.name, team: idx % 2 === 0 ? 'A' : 'B', goals: 0, isSubstitute: d.isSubstitute === true }));
+            .map(([uid, d], idx) => ({ id: String(uid), name: state.users[uid]?.name || d.name, team: idx % 2 === 0 ? 'A' : 'B', goals: 0, isSubstitute: d.isSubstitute === true, isSwapped: false }));
     }
 
-    activeList.forEach(p => renderPlayerRow(p, teamAContainer, teamBContainer));
+    starterList.forEach(p => renderPlayerRow(p, teamAContainer, teamBContainer));
+
+    if (swapList.length > 0) {
+        state.isSwapModeActive = true;
+        swapToggleBtn.className = 'px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-sm transition flex items-center space-x-1.5 shadow-sm';
+        document.getElementById('team-a-swaps-wrapper').classList.remove('hidden');
+        document.getElementById('team-b-swaps-wrapper').classList.remove('hidden');
+
+        swapList.forEach(sp => {
+            const sourceTeam = sp.team === 'A' ? 'B' : 'A';
+            const sourceContainer = sourceTeam === 'A' ? teamAContainer : teamBContainer;
+            const matchingStarterRow = Array.from(sourceContainer.querySelectorAll('.player-row')).find(
+                r => r.dataset.userid === sp.id && r.dataset.name === sp.name
+            );
+            if (matchingStarterRow) {
+                matchingStarterRow.dataset.swapped = 'true';
+                const swapBtn = matchingStarterRow.querySelector('.btn-player-swap');
+                if (swapBtn) {
+                    swapBtn.classList.remove('hidden', 'bg-transparent', 'text-gray-500');
+                    swapBtn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+                }
+            }
+            renderSwappedPlayerRow(sp);
+        });
+    }
+
+    updateSwapButtonsVisibility();
     updateMatchScores();
+}
+
+function toggleSwapMode() {
+    const state = window.AppState;
+    state.isSwapModeActive = !state.isSwapModeActive;
+
+    const swapToggleBtn = document.getElementById('toggle-swap-mode-btn');
+    const wrapperA = document.getElementById('team-a-swaps-wrapper');
+    const wrapperB = document.getElementById('team-b-swaps-wrapper');
+
+    if (state.isSwapModeActive) {
+        swapToggleBtn.className = 'px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-sm transition flex items-center space-x-1.5 shadow-sm';
+        wrapperA.classList.remove('hidden');
+        wrapperB.classList.remove('hidden');
+    } else {
+        // Revert and clear all swaps when toggling swap mode off
+        swapToggleBtn.className = 'px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition flex items-center space-x-1.5 border border-gray-200';
+        wrapperA.classList.add('hidden');
+        wrapperB.classList.add('hidden');
+        document.getElementById('team-a-swaps').innerHTML = '';
+        document.getElementById('team-b-swaps').innerHTML = '';
+
+        document.querySelectorAll('#team-a-players .player-row, #team-b-players .player-row').forEach(r => {
+            r.dataset.swapped = 'false';
+            const btn = r.querySelector('.btn-player-swap');
+            if (btn) {
+                btn.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+                btn.classList.add('bg-transparent', 'text-gray-500', 'border-gray-200');
+            }
+        });
+    }
+
+    updateSwapButtonsVisibility();
+    updateMatchScores();
+}
+
+function updateSwapButtonsVisibility() {
+    const isActive = window.AppState.isSwapModeActive;
+    document.querySelectorAll('.btn-player-swap').forEach(btn => {
+        if (isActive) btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+    });
 }
 
 function renderPlayerRow(p, teamAContainer, teamBContainer) {
@@ -1010,24 +1128,34 @@ function renderPlayerRow(p, teamAContainer, teamBContainer) {
     el.dataset.name = p.name;
     el.dataset.isSubstitute = p.isSubstitute ? 'true' : 'false';
     el.dataset.team = p.team;
+    el.dataset.swapped = 'false';
 
     const updateRowLayout = () => {
         const isTeamA = el.dataset.team === 'A';
+        const isSwapped = el.dataset.swapped === 'true';
         const goalsVal = el.querySelector('.player-goals') ? el.querySelector('.player-goals').innerText : (p.goals || 0);
+        const swapBtnClasses = isSwapped
+            ? 'btn-player-swap px-2 py-1 rounded border border-purple-600 bg-purple-600 text-white font-bold transition'
+            : 'btn-player-swap px-2 py-1 rounded border border-gray-200 bg-transparent hover:bg-purple-50 text-gray-500 font-bold transition';
+
+        // Goal counter is always the rightmost element
         el.innerHTML = `
             <div class="flex items-center space-x-1.5">
+                <button type="button" class="${swapBtnClasses} ${window.AppState.isSwapModeActive ? '' : 'hidden'}" title="Átállt a másik csapatba meccs közben">
+                    <i class="fa-solid fa-right-left"></i>
+                </button>
                 ${p.isSubstitute ? '<span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Beugró</span>' : ''}
                 <span class="font-semibold text-gray-800">${window.formatHungarianName(p.name)}</span>
             </div>
             <div class="flex items-center space-x-2">
+                <button type="button" class="btn-switch-team px-2 py-1 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold transition" title="${isTeamA ? 'Áthelyezés a B csapatba' : 'Áthelyezés az A csapatba'}">
+                    ${isTeamA ? '→' : '←'}
+                </button>
                 <div class="flex items-center border border-gray-200 rounded bg-white">
                     <button type="button" class="btn-minus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">-</button>
                     <span class="player-goals px-2 font-bold text-gray-800">${goalsVal}</span>
                     <button type="button" class="btn-plus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">+</button>
                 </div>
-                <button type="button" class="btn-switch-team px-2 py-1 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold transition" title="${isTeamA ? 'Áthelyezés a B csapatba' : 'Áthelyezés az A csapatba'}">
-                    ${isTeamA ? '→' : '←'}
-                </button>
             </div>
         `;
 
@@ -1042,12 +1170,36 @@ function renderPlayerRow(p, teamAContainer, teamBContainer) {
             updateMatchScores();
         });
         el.querySelector('.btn-switch-team').addEventListener('click', () => {
+            // Remove existing swap duplicate if switching initial team
+            if (el.dataset.swapped === 'true') {
+                removeSwappedDuplicate(el.dataset.userid, el.dataset.name);
+                el.dataset.swapped = 'false';
+            }
             if (el.dataset.team === 'A') {
                 el.dataset.team = 'B';
                 teamBContainer.appendChild(el);
             } else {
                 el.dataset.team = 'A';
                 teamAContainer.appendChild(el);
+            }
+            updateRowLayout();
+            updateMatchScores();
+        });
+        el.querySelector('.btn-player-swap').addEventListener('click', () => {
+            if (el.dataset.swapped === 'true') {
+                el.dataset.swapped = 'false';
+                removeSwappedDuplicate(el.dataset.userid, el.dataset.name);
+            } else {
+                el.dataset.swapped = 'true';
+                const targetTeam = el.dataset.team === 'A' ? 'B' : 'A';
+                renderSwappedPlayerRow({
+                    id: el.dataset.userid,
+                    name: el.dataset.name,
+                    isSubstitute: el.dataset.isSubstitute === 'true',
+                    team: targetTeam,
+                    goals: 0,
+                    outcome: 'W'
+                });
             }
             updateRowLayout();
             updateMatchScores();
@@ -1059,15 +1211,75 @@ function renderPlayerRow(p, teamAContainer, teamBContainer) {
     else teamBContainer.appendChild(el);
 }
 
+function removeSwappedDuplicate(userId, name) {
+    document.querySelectorAll('#team-a-swaps .swap-player-row, #team-b-swaps .swap-player-row').forEach(r => {
+        if (r.dataset.userid === userId && r.dataset.name === name) {
+            r.remove();
+        }
+    });
+}
+
+function renderSwappedPlayerRow(sp) {
+    const container = sp.team === 'A' ? document.getElementById('team-a-swaps') : document.getElementById('team-b-swaps');
+    const el = document.createElement('div');
+    el.className = 'flex items-center justify-between p-2 bg-purple-50/60 rounded-lg text-xs swap-player-row border border-purple-200 shadow-2xs';
+    el.dataset.userid = sp.id || '';
+    el.dataset.name = sp.name;
+    el.dataset.isSubstitute = sp.isSubstitute ? 'true' : 'false';
+    el.dataset.team = sp.team;
+
+    const currentOutcome = sp.outcome || 'W';
+
+    el.innerHTML = `
+        <div class="flex items-center space-x-1.5">
+            <span class="text-purple-600"><i class="fa-solid fa-right-left text-[10px]"></i></span>
+            <span class="font-semibold text-gray-800">${window.formatHungarianName(sp.name)}</span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <select class="swap-outcome-select px-1.5 py-0.5 rounded border border-purple-300 bg-white text-purple-800 font-bold text-[11px] focus:outline-none" title="Hogyan könyvelődjön a meccs a játékosnak?">
+                <option value="W" ${currentOutcome === 'W' ? 'selected' : ''}>W (3p)</option>
+                <option value="D" ${currentOutcome === 'D' ? 'selected' : ''}>D (1p)</option>
+                <option value="L" ${currentOutcome === 'L' ? 'selected' : ''}>L (0p)</option>
+            </select>
+            <div class="flex items-center border border-gray-200 rounded bg-white">
+                <button type="button" class="btn-minus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">-</button>
+                <span class="player-goals px-2 font-bold text-gray-800">${sp.goals || 0}</span>
+                <button type="button" class="btn-plus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">+</button>
+            </div>
+        </div>
+    `;
+
+    el.querySelector('.btn-minus').addEventListener('click', (e) => {
+        const s = e.target.parentElement.querySelector('.player-goals');
+        s.innerText = Math.max(0, parseInt(s.innerText) - 1);
+        updateMatchScores();
+    });
+    el.querySelector('.btn-plus').addEventListener('click', (e) => {
+        const s = e.target.parentElement.querySelector('.player-goals');
+        s.innerText = parseInt(s.innerText) + 1;
+        updateMatchScores();
+    });
+
+    container.appendChild(el);
+}
+
 function updateMatchScores() {
     let scoreA = 0, scoreB = 0;
-    document.querySelectorAll('#team-a-players .player-row').forEach(r => scoreA += parseInt(r.querySelector('.player-goals').innerText || 0));
-    document.querySelectorAll('#team-b-players .player-row').forEach(r => scoreB += parseInt(r.querySelector('.player-goals').innerText || 0));
+    document.querySelectorAll('#team-a-players .player-row, #team-a-swaps .swap-player-row').forEach(r => {
+        scoreA += parseInt(r.querySelector('.player-goals').innerText || 0);
+    });
+    document.querySelectorAll('#team-b-players .player-row, #team-b-swaps .swap-player-row').forEach(r => {
+        scoreB += parseInt(r.querySelector('.player-goals').innerText || 0);
+    });
     document.getElementById('team-a-score').innerText = scoreA;
     document.getElementById('team-b-score').innerText = scoreB;
 }
 
-function closeMatchMode() { document.getElementById('match-mode-section').classList.add('hidden'); window.AppState.editingMatchIndex = null; }
+function closeMatchMode() {
+    document.getElementById('match-mode-section').classList.add('hidden');
+    window.AppState.editingMatchIndex = null;
+    window.AppState.isSwapModeActive = false;
+}
 
 function saveMatchResults() {
     const state = window.AppState;
@@ -1094,24 +1306,66 @@ function saveMatchResults() {
 
     const teamA = [], teamB = [];
     let scoreA = 0, scoreB = 0;
-    const participantIds = [];
+    const participantIdsSet = new Set();
 
+    // Collect custom outcomes selected on swapped rows so both records know the player's match outcome
+    const swappedOutcomes = {};
+    document.querySelectorAll('#team-a-swaps .swap-player-row, #team-b-swaps .swap-player-row').forEach(r => {
+        const uid = r.dataset.userid;
+        const outcomeSelect = r.querySelector('.swap-outcome-select');
+        if (uid && outcomeSelect) {
+            swappedOutcomes[uid] = outcomeSelect.value;
+        }
+    });
+
+    // Starting players in Team A
     teamAEls.forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
         const uid = r.dataset.userid;
-        teamA.push({ id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub });
+        const entry = { id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub, isSwapped: false };
+        if (!isSub && uid && swappedOutcomes[uid]) {
+            entry.outcome = swappedOutcomes[uid];
+        }
+        teamA.push(entry);
         scoreA += goals;
-        if (!isSub && uid) participantIds.push(uid);
+        if (!isSub && uid) participantIdsSet.add(uid);
     });
 
+    // Swapped players in Team A
+    document.querySelectorAll('#team-a-swaps .swap-player-row').forEach(r => {
+        const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
+        const isSub = r.dataset.isSubstitute === 'true';
+        const uid = r.dataset.userid;
+        const outcome = r.querySelector('.swap-outcome-select')?.value || 'W';
+        teamA.push({ id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub, isSwapped: true, outcome });
+        scoreA += goals;
+        if (!isSub && uid) participantIdsSet.add(uid);
+    });
+
+    // Starting players in Team B
     teamBEls.forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
         const uid = r.dataset.userid;
-        teamB.push({ id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub });
+        const entry = { id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub, isSwapped: false };
+        if (!isSub && uid && swappedOutcomes[uid]) {
+            entry.outcome = swappedOutcomes[uid];
+        }
+        teamB.push(entry);
         scoreB += goals;
-        if (!isSub && uid) participantIds.push(uid);
+        if (!isSub && uid) participantIdsSet.add(uid);
+    });
+
+    // Swapped players in Team B
+    document.querySelectorAll('#team-b-swaps .swap-player-row').forEach(r => {
+        const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
+        const isSub = r.dataset.isSubstitute === 'true';
+        const uid = r.dataset.userid;
+        const outcome = r.querySelector('.swap-outcome-select')?.value || 'W';
+        teamB.push({ id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub, isSwapped: true, outcome });
+        scoreB += goals;
+        if (!isSub && uid) participantIdsSet.add(uid);
     });
 
     const matchRecord = { date: state.editingMatchIndex !== null ? state.matches[state.editingMatchIndex].date : state.nextMatch.date, scoreA, scoreB, teamA, teamB };
@@ -1122,7 +1376,7 @@ function saveMatchResults() {
     } else {
         state.matches.push(matchRecord);
         const feeDeduction = -(state.nextMatch.feePerPerson || 1000);
-        participantIds.forEach(uid => {
+        participantIdsSet.forEach(uid => {
             const ut = state.transactions[uid] || [];
             ut.push({ amount: feeDeduction, date: matchRecord.date, type: 'match' });
             set(ref(db, `transactions/${uid}`), ut);

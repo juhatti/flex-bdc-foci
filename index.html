@@ -41,7 +41,7 @@
                     </div>
                 </div>
 
-                <!-- Menü gombok középre igazítva -->
+                <!-- Centered navigation menu buttons -->
                 <div id="nav-menu-bar" class="flex items-center justify-center space-x-6 font-medium text-gray-400 pt-1 border-t border-gray-100 w-full hidden">
                     <button id="nav-tab-matches" class="flex items-center space-x-1.5 hover:text-gray-700 transition py-1 px-3 rounded-lg text-emerald-600 font-bold bg-emerald-50">
                         <i class="fa-solid fa-calendar-days"></i>
@@ -138,7 +138,7 @@
         <!-- DASHBOARD CONTENT -->
         <div id="dashboard-section" class="hidden space-y-8">
             
-            <!-- 1. MECCSEK TAB NÉZET -->
+            <!-- 1. MATCHES TAB VIEW -->
             <div id="tab-content-matches" class="space-y-8">
                 <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center relative">
                     <button id="edit-next-match-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition hidden" title="Meccs időpont szerkesztése">
@@ -205,7 +205,13 @@
                                     <strong id="team-a-score" class="text-base text-gray-900">0</strong>
                                 </div>
                             </div>
-                            <div id="team-a-players" class="space-y-2 mb-4 min-h-[100px]"></div>
+                            <div id="team-a-players" class="space-y-2 min-h-[80px]"></div>
+                            <div id="team-a-swaps-wrapper" class="hidden mt-3 pt-3 border-t-2 border-dashed border-gray-300">
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-purple-600 mb-2 flex items-center gap-1">
+                                    <i class="fa-solid fa-right-left"></i> Átállt játékosok
+                                </div>
+                                <div id="team-a-swaps" class="space-y-2"></div>
+                            </div>
                         </div>
 
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -216,15 +222,27 @@
                                 </div>
                                 <h4 class="font-bold text-indigo-700 text-right">B Csapat</h4>
                             </div>
-                            <div id="team-b-players" class="space-y-2 mb-4 min-h-[100px]"></div>
+                            <div id="team-b-players" class="space-y-2 min-h-[80px]"></div>
+                            <div id="team-b-swaps-wrapper" class="hidden mt-3 pt-3 border-t-2 border-dashed border-gray-300">
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-purple-600 mb-2 flex items-center gap-1">
+                                    <i class="fa-solid fa-right-left"></i> Átállt játékosok
+                                </div>
+                                <div id="team-b-swaps" class="space-y-2"></div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                    <div class="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-gray-100">
                         <span id="match-mode-date-label" class="text-xs text-gray-500">Dátum: 2026. 10. 27.</span>
-                        <button id="save-match-results-btn" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm transition shadow-sm">
-                            Eredmény Mentése
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button id="toggle-swap-mode-btn" type="button" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition flex items-center space-x-1.5 border border-gray-200">
+                                <i class="fa-solid fa-right-left"></i>
+                                <span>Cserék</span>
+                            </button>
+                            <button id="save-match-results-btn" type="button" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm transition shadow-sm">
+                                Eredmény Mentése
+                            </button>
+                        </div>
                     </div>
                 </section>
 
@@ -275,7 +293,7 @@
                 </section>
             </div>
 
-            <!-- 2. PÉNZÜGYEK TAB NÉZET -->
+            <!-- 2. FINANCES TAB VIEW -->
             <div id="tab-content-finances" class="space-y-8 hidden">
                 <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-gray-100 gap-2">
@@ -352,7 +370,7 @@
                     </div>
                 </section>
 
-                <!-- UTALÁSI ADATOK INFÓ RÉSZLEG -->
+                <!-- BANK TRANSFER INFO SECTION -->
                 <section class="bg-gray-50 rounded-2xl p-5 border border-gray-200/80 text-xs text-gray-500 space-y-1.5">
                     <div class="font-bold uppercase tracking-wider text-gray-400 text-[11px] mb-1">
                         <i class="fa-solid fa-circle-info mr-1"></i> Utalási adatok
@@ -363,7 +381,7 @@
                 </section>
             </div>
 
-            <!-- 3. TABELLA TAB NÉZET -->
+            <!-- 3. STANDINGS TAB VIEW -->
             <div id="tab-content-standings" class="space-y-8 hidden">
                 <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
                     <div class="flex justify-between items-center mb-4">

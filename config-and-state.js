@@ -1,4 +1,4 @@
-// Globális Alkalmazás Állapotok
+// Global Application State
 window.AppState = {
     currentUser: null,
     isAdmin: false,
@@ -16,6 +16,7 @@ window.AppState = {
     transactions: {},
     treasury: [],
     editingMatchIndex: null,
+    isSwapModeActive: false,
     currentMatchPage: 0,
     currentMyTransPage: 0,
     currentTreasuryPage: 0,
