@@ -542,6 +542,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBy-e4SGpdoAFDdk9goKyQySe6CvqsFDz4",
@@ -555,8 +556,18 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app);
 
-        window.FB = { db, ref, set, onValue };
+        // Automatikus névtelen bejelentkezés a háttérben, hogy a szabályzat (.read/.write: auth != null) engedje a kéréseket
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("Firebase Anonymous Auth sikeres.");
+            })
+            .catch((error) => {
+                console.error("Firebase Auth hiba:", error.code, error.message);
+            });
+
+        window.FB = { db, ref, set, onValue, auth };
     </script>
 
     <!-- SCRIPTS -->
