@@ -22,17 +22,20 @@
             
             <!-- User Status & Ribbon -->
             <div id="user-header-info" class="w-full flex flex-col items-center text-xs text-gray-500 mt-2 px-2 border-t border-gray-200 pt-3 hidden gap-3">
-                <div class="w-full flex justify-between items-center">
+                <div class="w-full flex flex-wrap justify-between items-center gap-2">
                     <div class="flex items-center space-x-1.5">
                         <span>Bejelentkezve mint:</span> 
                         <strong id="logged-user-name" class="text-gray-800"></strong> 
-                        <button id="open-edit-email-btn" class="text-gray-400 hover:text-gray-700 p-1" title="Email cím szerkesztése">
+                        <button id="open-edit-email-btn" class="text-gray-400 hover:text-gray-700 p-1" title="Profil szerkesztése">
                             <i class="fa-solid fa-pen text-[10px]"></i>
                         </button>
                         <span id="admin-badge" class="hidden bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ml-1">Admin</span>
                     </div>
                     <div class="flex items-center space-x-3">
-                        <button id="logout-btn" class="text-red-500 hover:text-red-700 font-medium">
+                        <div id="header-balance-badge" class="px-2.5 py-1 rounded-lg border font-bold text-[11px] bg-emerald-50 border-emerald-200 text-emerald-800">
+                            Egyenleged: <span id="header-balance-amount" class="font-black">0 Ft</span>
+                        </div>
+                        <button id="logout-btn" class="text-gray-500 hover:text-gray-700 font-medium">
                             Kijelentkezés <i class="fa-solid fa-right-from-bracket ml-1"></i>
                         </button>
                     </div>
@@ -99,25 +102,25 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Vezetéknév</label>
-                        <input type="text" id="reg-lastname" required placeholder="Juhász" 
+                        <input type="text" id="reg-lastname" required placeholder="Henry" 
                                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Keresztnév</label>
-                        <input type="text" id="reg-firstname" required placeholder="Attila" 
+                        <input type="text" id="reg-firstname" required placeholder="Thierry" 
                                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email cím</label>
-                    <input type="email" id="reg-email" required placeholder="juhatti@gmail.com" 
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Felhasználónév (egyedi)</label>
+                    <input type="text" id="reg-username" required placeholder="henry14" 
                            class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Felhasználónév (egyedi)</label>
-                    <input type="text" id="reg-username" required placeholder="juhatti" 
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email cím</label>
+                    <input type="email" id="reg-email" required placeholder="thierry.henry@arsenal.com" 
                            class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
                 </div>
 
@@ -189,7 +192,7 @@
                 <!-- MATCH RECORDING SECTION -->
                 <section id="match-mode-section" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-xl hidden relative">
                     <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
-                        <h3 class="text-lg font-bold text-gray-900"><i class="fa-solid fa-sliders text-emerald-600 mr-2"></i>Meccs Rögzítése & Csapatok</h3>
+                        <h3 class="text-lg font-bold text-gray-900"><i class="fa-solid fa-soccer-ball text-gray-900 mr-2"></i>Meccs mód</h3>
                         <button id="close-match-mode-btn" class="text-xs text-gray-500 hover:text-gray-900 bg-gray-100 px-3 py-1.5 rounded-lg">Bezárás</button>
                     </div>
 
@@ -285,14 +288,20 @@
                         </div>
                     </div>
 
-                    <div class="border border-gray-100 rounded-xl overflow-hidden">
-                        <button id="toggle-my-trans-btn" class="w-full flex justify-between items-center p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
-                            <span>Saját Tranzakcióid (Utolsó 3)</span>
-                            <i id="my-trans-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
-                        </button>
-                        <div id="my-transactions-container" class="p-3 bg-white space-y-2 hidden">
-                            <div id="my-transactions-list" class="space-y-2"></div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-600">Saját Tranzakcióid</h4>
+                            <div id="my-trans-pagination" class="flex items-center space-x-2 hidden">
+                                <button id="prev-my-trans-btn" class="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-[10px] transition disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <span id="my-trans-page-indicator" class="text-[11px] text-gray-500 font-medium">1 / 1</span>
+                                <button id="next-my-trans-btn" class="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-[10px] transition disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                            </div>
                         </div>
+                        <div id="my-transactions-list" class="space-y-2"></div>
                     </div>
 
                     <div id="admin-finances-container" class="hidden border-t border-gray-100 pt-4 space-y-4">
@@ -320,14 +329,20 @@
                         </div>
                     </div>
 
-                    <div class="border border-gray-100 rounded-xl overflow-hidden">
-                        <button id="toggle-treasury-btn" class="w-full flex justify-between items-center p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
-                            <span>Kassza Mozgások (Utolsó 3)</span>
-                            <i id="treasury-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
-                        </button>
-                        <div id="treasury-container" class="p-3 bg-white space-y-2 hidden">
-                            <div id="treasury-transactions-list" class="space-y-2"></div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-600">Kassza Mozgások</h4>
+                            <div id="treasury-pagination" class="flex items-center space-x-2 hidden">
+                                <button id="prev-treasury-btn" class="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-[10px] transition disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <span id="treasury-page-indicator" class="text-[11px] text-gray-500 font-medium">1 / 1</span>
+                                <button id="next-treasury-btn" class="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-[10px] transition disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                            </div>
                         </div>
+                        <div id="treasury-transactions-list" class="space-y-2"></div>
                     </div>
 
                     <div class="flex justify-end pt-2">
@@ -335,6 +350,16 @@
                             <i class="fa-solid fa-plus mr-1"></i> Kassza Mozgás
                         </button>
                     </div>
+                </section>
+
+                <!-- UTALÁSI ADATOK INFÓ RÉSZLEG -->
+                <section class="bg-gray-50 rounded-2xl p-5 border border-gray-200/80 text-xs text-gray-500 space-y-1.5">
+                    <div class="font-bold uppercase tracking-wider text-gray-400 text-[11px] mb-1">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Utalási adatok
+                    </div>
+                    <div>név: <span class="font-semibold text-gray-600">Juhász Attila</span></div>
+                    <div>számlaszám: <span class="font-semibold text-gray-600 select-all">10401000-86767855-85651001</span></div>
+                    <div>revolut: <span class="font-semibold text-gray-600 select-all">@juhatti</span></div>
                 </section>
             </div>
 
@@ -376,8 +401,6 @@
                         </table>
                     </div>
                 </section>
-
-
             </div>
         </div>
     </main>
@@ -419,7 +442,7 @@
     <div id="add-player-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-gray-100 space-y-4">
             <h3 class="text-lg font-bold text-gray-800">Regisztrált játékos hozzáadása</h3>
-            <p class="text-xs text-gray-400">Vlaszd ki a játékost, akit szeretnél bejelölni a következő meccsre ("Ott leszek"):</p>
+            <p class="text-xs text-gray-400">Válaszd ki a játékost, akit szeretnél bejelölni a következő meccsre ("Ott leszek"):</p>
             <div id="add-player-modal-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
             <div class="pt-2">
                 <button id="close-add-player-modal-btn" type="button" class="w-full py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">Bezárás</button>
@@ -427,9 +450,13 @@
         </div>
     </div>
 
+    <!-- PROFILE EDIT MODAL -->
     <div id="edit-email-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-gray-100 space-y-4">
-            <h3 class="text-lg font-bold text-gray-800">Email cím szerkesztése</h3>
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">Profil szerkesztése</h3>
+                <span id="edit-user-id-label" class="text-xs text-gray-400 font-mono">#101</span>
+            </div>
             <form id="edit-email-form" class="space-y-4">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -442,16 +469,16 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-emerald-600 uppercase mb-1">Email cím (szerkeszthető)</label>
-                    <input type="email" id="edit-email" required class="w-full px-3 py-2.5 rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-emerald-50/30">
-                    <label class="flex items-center space-x-2 mt-2.5 cursor-pointer select-none">
-                        <input type="checkbox" id="edit-email-reminder" class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
-                        <span class="text-xs text-gray-700 font-medium">emlékeztető kérése a következő meccsről</span>
-                    </label>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Felhasználónév</label>
+                    <input type="text" id="edit-username" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Felhasználónév</label>
-                    <input type="text" id="edit-username" disabled class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 text-sm cursor-not-allowed">
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email cím</label>
+                    <input type="email" id="edit-email" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm">
+                    <label class="flex items-center space-x-2 mt-2.5 cursor-pointer select-none">
+                        <input type="checkbox" id="edit-email-reminder" class="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-400">
+                        <span class="text-xs text-gray-700 font-medium">emlékeztető kérése a következő meccsről</span>
+                    </label>
                 </div>
                 <div class="flex space-x-3 pt-2">
                     <button type="button" id="close-edit-email-btn" class="w-1/2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition">Mégse</button>
@@ -556,7 +583,6 @@
         const db = getDatabase(app);
         const auth = getAuth(app);
 
-        // Automatikus névtelen bejelentkezés a háttérben, hogy a szabályzat (.read/.write: auth != null) engedje a kéréseket
         signInAnonymously(auth)
             .then(() => {
                 console.log("Firebase Anonymous Auth sikeres.");

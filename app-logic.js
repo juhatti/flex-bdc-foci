@@ -5,7 +5,8 @@ window.renderStandings = function() {
 
     const statsMap = {};
     Object.values(state.users).forEach(u => {
-        statsMap[u.username] = { username: u.username, name: u.name, M: 0, W: 0, D: 0, L: 0, P: 0, G: 0, goalsAgainst: 0, maxGoalsInSingleMatch: 0, form: [], matchesList: [] };
+        const uid = String(u.id);
+        statsMap[uid] = { id: uid, username: u.username, name: u.name, M: 0, W: 0, D: 0, L: 0, P: 0, G: 0, goalsAgainst: 0, maxGoalsInSingleMatch: 0, form: [], matchesList: [] };
     });
 
     const filteredMatches = state.matches.filter(m => m.date && m.date.startsWith(state.selectedYear.toString()));
@@ -15,8 +16,9 @@ window.renderStandings = function() {
         const processTeam = (teamArr, myScore, oppScore) => {
             if (!teamArr) return;
             teamArr.forEach(p => {
-                if (p.isSubstitute || !statsMap[p.username]) return;
-                const st = statsMap[p.username];
+                const pid = String(p.id || p.username || '');
+                if (p.isSubstitute || !statsMap[pid]) return;
+                const st = statsMap[pid];
                 const goals = parseInt(p.goals || 0);
                 st.M++; st.G += goals; st.goalsAgainst += oppScore;
                 if (goals > st.maxGoalsInSingleMatch) st.maxGoalsInSingleMatch = goals;
@@ -59,7 +61,7 @@ window.renderStandings = function() {
             formHtml += `<span class="inline-block w-2.5 h-2.5 rounded-full ${f === 'W' ? 'bg-emerald-500' : f === 'D' ? 'bg-amber-400' : 'bg-red-500'} mx-0.5"></span>`;
         });
 
-        const isMe = state.currentUser && state.currentUser.username === st.username;
+        const isMe = state.currentUser && String(state.currentUser.id) === st.id;
         const tr = document.createElement('tr');
         tr.className = `${isMe ? 'bg-emerald-50/80 font-bold border-l-4 border-emerald-500' : 'hover:bg-gray-50/80'} transition`;
         tr.innerHTML = `
@@ -78,5 +80,4 @@ window.renderStandings = function() {
         `;
         tbody.appendChild(tr);
     });
-
 };

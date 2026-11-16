@@ -17,7 +17,9 @@ window.AppState = {
     treasury: [],
     editingMatchIndex: null,
     currentMatchPage: 0,
+    currentMyTransPage: 0,
+    currentTreasuryPage: 0,
     selectedYear: 2026,
-    selectedPaymentUsername: null,
+    selectedPaymentUserId: null,
     activeTab: 'matches'
 };

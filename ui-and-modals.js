@@ -10,7 +10,18 @@ function initFirebaseListeners() {
     const state = window.AppState;
 
     onValue(ref(db, 'users'), (snapshot) => {
-        state.users = snapshot.val() || {};
+        const rawUsers = snapshot.val() || {};
+        const normalized = {};
+        Object.entries(rawUsers).forEach(([key, u]) => {
+            const uid = String(u.id || key);
+            normalized[uid] = { ...u, id: uid };
+        });
+        state.users = normalized;
+
+        if (state.currentUser && state.currentUser.id && state.users[state.currentUser.id]) {
+            state.currentUser = state.users[state.currentUser.id];
+            state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes' || state.currentUser.username === 'juhatti';
+        }
         renderApp();
     });
 
@@ -72,9 +83,13 @@ function bindEvents() {
     document.getElementById('nav-tab-finances').addEventListener('click', () => switchTab('finances'));
     document.getElementById('nav-tab-standings').addEventListener('click', () => switchTab('standings'));
 
-    // Accordions
-    document.getElementById('toggle-my-trans-btn').addEventListener('click', toggleMyTransAccordion);
-    document.getElementById('toggle-treasury-btn').addEventListener('click', toggleTreasuryAccordion);
+    // Accordions & Transaction Pagination
+    
+    
+    document.getElementById('prev-my-trans-btn').addEventListener('click', prevMyTransPage);
+    document.getElementById('next-my-trans-btn').addEventListener('click', nextMyTransPage);
+    document.getElementById('prev-treasury-btn').addEventListener('click', prevTreasuryPage);
+    document.getElementById('next-treasury-btn').addEventListener('click', nextTreasuryPage);
 
     // Player payment modal
     document.getElementById('close-payment-modal-btn').addEventListener('click', closePaymentModal);
@@ -87,7 +102,7 @@ function bindEvents() {
     document.getElementById('close-treasury-modal-btn').addEventListener('click', closeTreasuryModal);
     document.getElementById('save-treasury-btn').addEventListener('click', saveTreasuryTransaction);
 
-    // Edit Email modal
+    // Edit Profile modal
     document.getElementById('open-edit-email-btn').addEventListener('click', openEditEmailModal);
     document.getElementById('close-edit-email-btn').addEventListener('click', closeEditEmailModal);
     document.getElementById('edit-email-form').addEventListener('submit', saveEditedEmail);
@@ -101,6 +116,14 @@ function bindEvents() {
     window.addEventListener('click', () => {
         yearMenu.classList.add('hidden');
     });
+}
+
+function generateUniqueUserId() {
+    const existingIds = new Set(Object.keys(window.AppState.users));
+    for (let i = 101; i <= 999; i++) {
+        if (!existingIds.has(String(i))) return String(i);
+    }
+    return String(Math.floor(100 + Math.random() * 900));
 }
 
 function switchTab(tabName) {
@@ -136,15 +159,9 @@ function switchTab(tabName) {
     }
 }
 
-function toggleMyTransAccordion() {
-    document.getElementById('my-transactions-container').classList.toggle('hidden');
-    document.getElementById('my-trans-chevron').classList.toggle('rotate-180');
-}
 
-function toggleTreasuryAccordion() {
-    document.getElementById('treasury-container').classList.toggle('hidden');
-    document.getElementById('treasury-chevron').classList.toggle('rotate-180');
-}
+
+
 
 window.selectYear = function(year) {
     const state = window.AppState;
@@ -196,7 +213,8 @@ function handleLogin(e) {
 
     if (usernameInput === 'admin') {
         if (passInput === 'arsenal') {
-            state.currentUser = { username: 'admin', name: 'Juhász Attila (Admin)', admin: true, email: 'juhatti@gmail.com' };
+            const existingAdmin = Object.values(state.users).find(u => u.username === 'admin');
+            state.currentUser = existingAdmin || { id: '100', username: 'admin', name: 'Juhász Attila (Admin)', admin: true, email: 'juhatti@gmail.com' };
             state.isAdmin = true;
             saveSession();
         } else {
@@ -205,8 +223,9 @@ function handleLogin(e) {
         return;
     }
 
-    if (state.users[usernameInput]) {
-        state.currentUser = state.users[usernameInput];
+    const matchedUser = Object.values(state.users).find(u => (u.username || '').toLowerCase() === usernameInput);
+    if (matchedUser) {
+        state.currentUser = matchedUser;
         state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes' || state.currentUser.username === 'juhatti';
         saveSession();
     } else {
@@ -222,12 +241,15 @@ function handleRegister(e) {
     const email = document.getElementById('reg-email').value.trim();
     const username = document.getElementById('reg-username').value.trim().toLowerCase();
 
-    if (state.users[username]) {
+    const usernameExists = Object.values(state.users).some(u => (u.username || '').toLowerCase() === username) || username === 'admin';
+    if (usernameExists) {
         showToast('Ez a felhasználónév már foglalt!');
         return;
     }
 
+    const newId = generateUniqueUserId();
     const newUser = {
+        id: newId,
         username,
         name: `${lastName} ${firstName}`,
         email,
@@ -235,7 +257,7 @@ function handleRegister(e) {
     };
 
     const { db, ref, set } = window.FB;
-    set(ref(db, `users/${username}`), newUser);
+    set(ref(db, `users/${newId}`), newUser);
     state.currentUser = newUser;
     state.isAdmin = username === 'juhatti';
     saveSession();
@@ -287,12 +309,14 @@ function toggleAuthMode(mode) {
 function openEditEmailModal() {
     const state = window.AppState;
     if (!state.currentUser || state.currentUser.username === 'admin') return;
-    const userObj = state.users[state.currentUser.username] || state.currentUser;
+    const uid = String(state.currentUser.id);
+    const userObj = state.users[uid] || state.currentUser;
     const parts = (userObj.name || '').trim().split(/\s+/);
+    document.getElementById('edit-user-id-label').innerText = `#${uid}`;
     document.getElementById('edit-lastname').value = parts[0] || '';
     document.getElementById('edit-firstname').value = parts.slice(1).join(' ') || '';
-    document.getElementById('edit-email').value = userObj.email || '';
     document.getElementById('edit-username').value = userObj.username || '';
+    document.getElementById('edit-email').value = userObj.email || '';
     document.getElementById('edit-email-reminder').checked = Boolean(userObj.matchReminder);
     document.getElementById('edit-email-modal').classList.remove('hidden');
 }
@@ -306,25 +330,42 @@ function saveEditedEmail(e) {
     const state = window.AppState;
     if (!state.currentUser) return;
 
+    const uid = String(state.currentUser.id);
+    const newUsername = document.getElementById('edit-username').value.trim().toLowerCase();
     const newEmail = document.getElementById('edit-email').value.trim();
+
+    if (!newUsername) {
+        showToast('Kérlek add meg a felhasználónevet!');
+        return;
+    }
     if (!newEmail) {
         showToast('Kérlek add meg az email címet!');
         return;
     }
+
+    const usernameConflict = Object.values(state.users).some(u => String(u.id) !== uid && (u.username || '').toLowerCase() === newUsername) || newUsername === 'admin';
+    if (usernameConflict) {
+        showToast('Ez a felhasználónév már foglalt!');
+        return;
+    }
+
     const wantReminder = document.getElementById('edit-email-reminder').checked;
 
+    state.currentUser.username = newUsername;
     state.currentUser.email = newEmail;
     state.currentUser.matchReminder = wantReminder;
-    if (state.users[state.currentUser.username]) {
-        state.users[state.currentUser.username].email = newEmail;
-        state.users[state.currentUser.username].matchReminder = wantReminder;
+
+    if (state.users[uid]) {
+        state.users[uid].username = newUsername;
+        state.users[uid].email = newEmail;
+        state.users[uid].matchReminder = wantReminder;
     }
 
     const { db, ref, set } = window.FB;
-    set(ref(db, `users/${state.currentUser.username}`), state.users[state.currentUser.username] || state.currentUser);
+    set(ref(db, `users/${uid}`), state.users[uid] || state.currentUser);
     saveSession();
     closeEditEmailModal();
-    showToast('Beállítások sikeresen frissítve!');
+    showToast('Profil sikeresen frissítve!');
 }
 
 function handleSliderClick(e) {
@@ -341,33 +382,37 @@ function handleSliderClick(e) {
         else if (relX < (rect.width * 2) / 3) nextStatus = 'maybe';
         else nextStatus = 'yes';
     }
-    const currentAtt = state.nextMatch.attendances[state.currentUser.username] || { status: 'maybe', note: '' };
+    const uid = String(state.currentUser.id);
+    const currentAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
     if (currentAtt.status !== nextStatus) {
-        updateAttendanceDB(state.currentUser.username, nextStatus, currentAtt.note);
+        updateAttendanceDB(uid, nextStatus, currentAtt.note);
     }
 }
 
 function saveAttendanceNote(val) {
     const state = window.AppState;
     if (!state.currentUser) return;
-    const currentAtt = state.nextMatch.attendances[state.currentUser.username] || { status: 'maybe', note: '' };
-    updateAttendanceDB(state.currentUser.username, currentAtt.status, val.trim());
+    const uid = String(state.currentUser.id);
+    const currentAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
+    updateAttendanceDB(uid, currentAtt.status, val.trim());
 }
 
-function updateAttendanceDB(username, status, note) {
+function updateAttendanceDB(userId, status, note) {
     const state = window.AppState;
-    const userData = state.users[username] || state.currentUser;
+    const uid = String(userId);
+    const userData = state.users[uid] || state.currentUser;
     const { db, ref, set } = window.FB;
-    set(ref(db, `nextMatch/attendances/${username}`), { status, note: note || '', name: userData.name });
+    set(ref(db, `nextMatch/attendances/${uid}`), { id: uid, status, note: note || '', name: userData.name });
     document.getElementById('attendance-msg').classList.remove('opacity-0');
 }
 
-function setUserStatusAdmin(username, statusVal) {
+function setUserStatusAdmin(userId, statusVal) {
     const state = window.AppState;
     if (!state.isAdmin) return;
-    const att = state.nextMatch.attendances[username] || { note: '', name: state.users[username]?.name || username };
+    const uid = String(userId);
+    const att = state.nextMatch.attendances[uid] || { note: '', name: state.users[uid]?.name || uid };
     const { db, ref, set } = window.FB;
-    set(ref(db, `nextMatch/attendances/${username}`), { status: statusVal, note: att.note, name: att.name });
+    set(ref(db, `nextMatch/attendances/${uid}`), { id: uid, status: statusVal, note: att.note, name: att.name });
 }
 
 function renderApp() {
@@ -430,7 +475,8 @@ function renderNextMatchCard() {
     document.getElementById('calendar-export-btn').addEventListener('click', exportToGoogleCalendar);
 
     if (!state.currentUser) return;
-    const myAtt = state.nextMatch.attendances[state.currentUser.username] || { status: 'maybe', note: '' };
+    const uid = String(state.currentUser.id);
+    const myAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
     const thumb = document.getElementById('slider-thumb');
     thumb.className = 'tri-slider-thumb';
     if (myAtt.status === 'no') thumb.classList.add('pos-left');
@@ -465,9 +511,10 @@ function renderAttendeesList() {
     let yesCount = 0;
     const entries = Object.entries(state.nextMatch.attendances || {});
 
-    entries.forEach(([uname, att], idx) => {
+    entries.forEach(([uid, att], idx) => {
         if (att.status === 'yes') yesCount++;
-        const formattedName = window.formatHungarianName(att.name || uname);
+        const displayName = state.users[uid]?.name || att.name || uid;
+        const formattedName = window.formatHungarianName(displayName);
         const isSub = att.isSubstitute === true;
 
         let iconHtml = att.status === 'yes' ? `<span class="text-emerald-500 bg-emerald-50 p-1.5 rounded-lg"><i class="fa-solid fa-square-check"></i></span>` :
@@ -493,7 +540,7 @@ function renderAttendeesList() {
                     ${iconHtml}
                 </div>
             `;
-            if (state.isAdmin) row.querySelector('.btn-del-sub').addEventListener('click', () => removeGeneralSubstitute(uname));
+            if (state.isAdmin) row.querySelector('.btn-del-sub').addEventListener('click', () => removeGeneralSubstitute(uid));
         } else {
             row.innerHTML = `
                 <div class="flex items-center space-x-3">
@@ -512,8 +559,8 @@ function renderAttendeesList() {
                 </div>
             `;
             if (state.isAdmin) {
-                row.querySelector('.btn-att-yes').addEventListener('click', () => setUserStatusAdmin(uname, 'yes'));
-                row.querySelector('.btn-att-no').addEventListener('click', () => setUserStatusAdmin(uname, 'no'));
+                row.querySelector('.btn-att-yes').addEventListener('click', () => setUserStatusAdmin(uid, 'yes'));
+                row.querySelector('.btn-att-no').addEventListener('click', () => setUserStatusAdmin(uid, 'no'));
             }
         }
         container.appendChild(row);
@@ -529,7 +576,7 @@ function addGeneralSubstitute() {
     if (!subName || !subName.trim()) return;
     const subKey = 'sub_' + Date.now();
     const { db, ref, set } = window.FB;
-    set(ref(db, `nextMatch/attendances/${subKey}`), { status: 'yes', note: '', name: subName.trim(), isSubstitute: true });
+    set(ref(db, `nextMatch/attendances/${subKey}`), { id: subKey, status: 'yes', note: '', name: subName.trim(), isSubstitute: true });
     showToast('Beugró hozzáadva!');
 }
 
@@ -541,21 +588,22 @@ function openAddPlayerModal() {
     container.innerHTML = '';
     
     const currentAttendees = state.nextMatch.attendances || {};
-    const unlistedUsers = Object.values(state.users).filter(u => !currentAttendees[u.username]);
+    const unlistedUsers = Object.values(state.users).filter(u => !currentAttendees[String(u.id)]);
 
     if (unlistedUsers.length === 0) {
         container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">Minden regisztrált játékos szerepel már a listán.</p>`;
     } else {
         unlistedUsers.forEach(u => {
+            const uid = String(u.id);
             const div = document.createElement('div');
             div.className = 'flex justify-between items-center bg-gray-50 p-2 rounded-xl text-xs hover:bg-emerald-50 transition border border-gray-100';
             div.innerHTML = `
-                <span class="font-semibold text-gray-800">${u.name}</span>
+                <span class="font-semibold text-gray-800">${u.name} <span class="text-gray-400 font-normal">(#${uid})</span></span>
                 <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-2xs">Hozzáadás</button>
             `;
             div.querySelector('button').addEventListener('click', () => {
                 const { db, ref, set } = window.FB;
-                set(ref(db, `nextMatch/attendances/${u.username}`), { status: 'yes', note: '', name: u.name });
+                set(ref(db, `nextMatch/attendances/${uid}`), { id: uid, status: 'yes', note: '', name: u.name });
                 showToast(`${u.name} hozzáadva a meccshez!`);
                 closeAddPlayerModal();
             });
@@ -608,8 +656,9 @@ function renderLastMatches() {
 
     pageMatches.forEach((m) => {
         const actualIndex = state.matches.indexOf(m);
-        const teamAScorers = (m.teamA || []).filter(p => p.goals > 0).map(p => `${window.formatHungarianName(p.name)} <span class="bg-emerald-50 text-emerald-800 border px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
-        const teamBScorers = (m.teamB || []).filter(p => p.goals > 0).map(p => `${window.formatHungarianName(p.name)} <span class="bg-indigo-50 text-indigo-800 border px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
+        const resolveName = (p) => (p.id && state.users[String(p.id)]?.name) || p.name;
+        const teamAScorers = (m.teamA || []).filter(p => p.goals > 0).map(p => `${window.formatHungarianName(resolveName(p))} <span class="bg-emerald-50 text-emerald-800 border px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
+        const teamBScorers = (m.teamB || []).filter(p => p.goals > 0).map(p => `${window.formatHungarianName(resolveName(p))} <span class="bg-indigo-50 text-indigo-800 border px-1.5 py-0.5 rounded text-[10px] font-bold">${p.goals}</span>`).join(', ') || '-';
 
         const card = document.createElement('div');
         card.className = 'bg-gray-50 border border-gray-100 p-4 rounded-xl text-center relative shadow-2xs';
@@ -634,30 +683,82 @@ function nextMatchPage() {
     if (window.AppState.currentMatchPage < Math.ceil(window.AppState.matches.length / 3) - 1) { window.AppState.currentMatchPage++; renderLastMatches(); }
 }
 
+function prevMyTransPage() {
+    if (window.AppState.currentMyTransPage > 0) { window.AppState.currentMyTransPage--; renderFinances(); }
+}
+function nextMyTransPage() {
+    const uid = String(window.AppState.currentUser?.id || '');
+    const len = (window.AppState.transactions[uid] || []).length;
+    if (window.AppState.currentMyTransPage < Math.ceil(len / 3) - 1) { window.AppState.currentMyTransPage++; renderFinances(); }
+}
+
+function prevTreasuryPage() {
+    if (window.AppState.currentTreasuryPage > 0) { window.AppState.currentTreasuryPage--; renderFinances(); }
+}
+function nextTreasuryPage() {
+    const len = (window.AppState.treasury || []).length;
+    if (window.AppState.currentTreasuryPage < Math.ceil(len / 3) - 1) { window.AppState.currentTreasuryPage++; renderFinances(); }
+}
+
 window.renderFinances = function() {
     const state = window.AppState;
     if (!state.currentUser) return;
 
+    const uid = String(state.currentUser.id);
     const balances = {};
-    Object.keys(state.users).forEach(uname => {
-        balances[uname] = (state.transactions[uname] || []).reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+    Object.keys(state.users).forEach(idKey => {
+        balances[idKey] = (state.transactions[idKey] || []).reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
     });
 
-    const myBal = balances[state.currentUser.username] || 0;
+    const myBal = balances[uid] || 0;
+    const myBalText = `${myBal > 0 ? '+' : ''}${myBal.toLocaleString()} Ft`;
+    const badgeColorClass = myBal >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800';
+
+    // Fejléc badge frissítése
+    const headerBalBadge = document.getElementById('header-balance-badge');
+    if (headerBalBadge) {
+        document.getElementById('header-balance-amount').innerText = myBalText;
+        headerBalBadge.className = `px-2.5 py-1 rounded-lg border font-bold text-[11px] ${badgeColorClass}`;
+    }
+
+    // Pénzügyek oldal badge frissítése
     const myBalBadge = document.getElementById('my-balance-badge');
-    document.getElementById('my-balance-amount').innerText = `${myBal > 0 ? '+' : ''}${myBal.toLocaleString()} Ft`;
-    myBalBadge.className = `px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs ${myBal >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`;
+    document.getElementById('my-balance-amount').innerText = myBalText;
+    myBalBadge.className = `px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs ${badgeColorClass}`;
 
+    // Saját tranzakciók lapozva (3/oldal)
     const myTransList = document.getElementById('my-transactions-list');
+    const myTransPagination = document.getElementById('my-trans-pagination');
     myTransList.innerHTML = '';
-    (state.transactions[state.currentUser.username] || []).slice(-3).reverse().forEach(t => {
-        const isPos = t.amount >= 0;
-        const typeLabel = t.type === 'match' ? 'Meccs pályadíj' : t.type === 'initial' ? 'Kezdőegyenleg' : 'Befizetés';
-        const row = document.createElement('div');
-        row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs';
-        row.innerHTML = `<div><span class="font-semibold text-gray-800 block">${typeLabel}</span><span class="text-[10px] text-gray-400">${t.date}</span></div><span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${t.amount} Ft</span>`;
-        myTransList.appendChild(row);
-    });
+
+    const reversedMyTrans = [...(state.transactions[uid] || [])].reverse();
+    const pageSize = 3;
+    const totalMyPages = Math.ceil(reversedMyTrans.length / pageSize) || 1;
+    if (state.currentMyTransPage >= totalMyPages) state.currentMyTransPage = totalMyPages - 1;
+    if (state.currentMyTransPage < 0) state.currentMyTransPage = 0;
+
+    if (reversedMyTrans.length > pageSize) {
+        myTransPagination.classList.remove('hidden');
+        document.getElementById('my-trans-page-indicator').innerText = `${state.currentMyTransPage + 1} / ${totalMyPages}`;
+        document.getElementById('prev-my-trans-btn').disabled = state.currentMyTransPage === 0;
+        document.getElementById('next-my-trans-btn').disabled = state.currentMyTransPage >= totalMyPages - 1;
+    } else {
+        myTransPagination.classList.add('hidden');
+    }
+
+    const pageMyTrans = reversedMyTrans.slice(state.currentMyTransPage * pageSize, (state.currentMyTransPage + 1) * pageSize);
+    if (pageMyTrans.length === 0) {
+        myTransList.innerHTML = `<p class="text-xs text-gray-400 text-center py-2">Nincs rögzített tranzakciód.</p>`;
+    } else {
+        pageMyTrans.forEach(t => {
+            const isPos = t.amount >= 0;
+            const typeLabel = t.type === 'match' ? 'Meccs pályadíj' : t.type === 'initial' ? 'Kezdőegyenleg' : 'Befizetés';
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs';
+            row.innerHTML = `<div><span class="font-semibold text-gray-800 block">${typeLabel}</span><span class="text-[10px] text-gray-400">${t.date}</span></div><span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>`;
+            myTransList.appendChild(row);
+        });
+    }
 
     const adminFinSec = document.getElementById('admin-finances-container');
     if (state.isAdmin) {
@@ -667,11 +768,12 @@ window.renderFinances = function() {
 
         const allUsersArr = Object.values(state.users);
         allUsersArr.forEach(u => {
-            const bal = balances[u.username] || 0;
+            const uIdStr = String(u.id);
+            const bal = balances[uIdStr] || 0;
             const row = document.createElement('div');
             row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 hover:bg-purple-50/50 cursor-pointer border border-gray-100 transition text-xs';
-            row.innerHTML = `<span class="font-semibold text-gray-800">${window.formatHungarianName(u.name)}</span><span class="font-bold px-2 py-0.5 rounded-md text-[11px] ${bal >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">${bal >= 0 ? '+' : ''}${bal.toLocaleString()} Ft</span>`;
-            row.addEventListener('click', () => openPaymentModal(u.username, u.name, bal));
+            row.innerHTML = `<span class="font-semibold text-gray-800">${window.formatHungarianName(u.name)} <span class="text-gray-400 font-normal text-[10px]">#${uIdStr}</span></span><span class="font-bold px-2 py-0.5 rounded-md text-[11px] ${bal >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">${bal >= 0 ? '+' : ''}${bal.toLocaleString()} Ft</span>`;
+            row.addEventListener('click', () => openPaymentModal(uIdStr, u.name, bal));
             allBalList.appendChild(row);
         });
     } else {
@@ -682,15 +784,37 @@ window.renderFinances = function() {
     document.getElementById('treasury-balance-amount').innerText = `${treasuryBal > 0 ? '+' : ''}${treasuryBal.toLocaleString()} Ft`;
     document.getElementById('treasury-balance-badge').className = `px-4 py-2 rounded-xl text-center border font-bold text-sm shadow-2xs ${treasuryBal >= 0 ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-800'}`;
 
+    // Kassza mozgások lapozva (3/oldal)
     const treasuryList = document.getElementById('treasury-transactions-list');
+    const treasuryPagination = document.getElementById('treasury-pagination');
     treasuryList.innerHTML = '';
-    [...state.treasury].slice(-3).reverse().forEach(t => {
-        const isPos = t.amount >= 0;
-        const row = document.createElement('div');
-        row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs';
-        row.innerHTML = `<div><span class="font-semibold text-gray-800 block">${t.note || (t.type === 'income' ? 'Bevétel' : 'Kiadás')}</span><span class="text-[10px] text-gray-400">${t.date}</span></div><span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>`;
-        treasuryList.appendChild(row);
-    });
+
+    const reversedTreasury = [...state.treasury].reverse();
+    const totalTreasuryPages = Math.ceil(reversedTreasury.length / pageSize) || 1;
+    if (state.currentTreasuryPage >= totalTreasuryPages) state.currentTreasuryPage = totalTreasuryPages - 1;
+    if (state.currentTreasuryPage < 0) state.currentTreasuryPage = 0;
+
+    if (reversedTreasury.length > pageSize) {
+        treasuryPagination.classList.remove('hidden');
+        document.getElementById('treasury-page-indicator').innerText = `${state.currentTreasuryPage + 1} / ${totalTreasuryPages}`;
+        document.getElementById('prev-treasury-btn').disabled = state.currentTreasuryPage === 0;
+        document.getElementById('next-treasury-btn').disabled = state.currentTreasuryPage >= totalTreasuryPages - 1;
+    } else {
+        treasuryPagination.classList.add('hidden');
+    }
+
+    const pageTreasury = reversedTreasury.slice(state.currentTreasuryPage * pageSize, (state.currentTreasuryPage + 1) * pageSize);
+    if (pageTreasury.length === 0) {
+        treasuryList.innerHTML = `<p class="text-xs text-gray-400 text-center py-2">Nincs rögzített kasszamozgás.</p>`;
+    } else {
+        pageTreasury.forEach(t => {
+            const isPos = t.amount >= 0;
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs';
+            row.innerHTML = `<div><span class="font-semibold text-gray-800 block">${t.note || (t.type === 'income' ? 'Bevétel' : 'Kiadás')}</span><span class="text-[10px] text-gray-400">${t.date}</span></div><span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>`;
+            treasuryList.appendChild(row);
+        });
+    }
 
     const treasuryModalBtn = document.getElementById('open-treasury-modal-btn');
     if (state.isAdmin) treasuryModalBtn.classList.remove('hidden');
@@ -705,8 +829,9 @@ function exportFinancesList() {
     let text = `Egyenlegek - ${dateStr}\n\n`;
     
     Object.values(state.users).forEach(u => {
-        const bal = (state.transactions[u.username] || []).reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
-        text += `${u.name}: ${bal >= 0 ? '+' : ''}${bal.toLocaleString()} Ft\n`;
+        const uid = String(u.id);
+        const bal = (state.transactions[uid] || []).reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+        text += `${u.name} (#${uid}): ${bal >= 0 ? '+' : ''}${bal.toLocaleString()} Ft\n`;
     });
 
     const treasuryBal = state.treasury.reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
@@ -723,11 +848,11 @@ function exportFinancesList() {
     });
 }
 
-function openPaymentModal(username, name, currentBal) {
+function openPaymentModal(userId, name, currentBal) {
     const state = window.AppState;
     if (!state.isAdmin) return;
-    state.selectedPaymentUsername = username;
-    document.getElementById('modal-user-name').innerText = window.formatHungarianName(name);
+    state.selectedPaymentUserId = String(userId);
+    document.getElementById('modal-user-name').innerText = `${window.formatHungarianName(name)} (#${userId})`;
     document.getElementById('modal-user-balance').innerText = `${currentBal > 0 ? '+' : ''}${currentBal.toLocaleString()} Ft`;
     document.getElementById('modal-amount-input').value = 1000;
     renderModalPlayerTransactions();
@@ -738,7 +863,7 @@ function renderModalPlayerTransactions() {
     const state = window.AppState;
     const container = document.getElementById('modal-user-last-trans');
     container.innerHTML = '';
-    const userTrans = state.transactions[state.selectedPaymentUsername] || [];
+    const userTrans = state.transactions[state.selectedPaymentUserId] || [];
     [...userTrans].slice(-3).reverse().forEach(t => {
         const origIdx = userTrans.indexOf(t);
         const isPos = t.amount >= 0;
@@ -753,32 +878,32 @@ function renderModalPlayerTransactions() {
 function deletePlayerTransaction(idx) {
     const state = window.AppState;
     if (!confirm('Biztosan törlöd ezt a tranzakciót?')) return;
-    const userTrans = state.transactions[state.selectedPaymentUsername] || [];
+    const userTrans = state.transactions[state.selectedPaymentUserId] || [];
     userTrans.splice(idx, 1);
     const { db, ref, set } = window.FB;
-    set(ref(db, `transactions/${state.selectedPaymentUsername}`), userTrans);
+    set(ref(db, `transactions/${state.selectedPaymentUserId}`), userTrans);
     document.getElementById('modal-user-balance').innerText = `${userTrans.reduce((s, t) => s + parseInt(t.amount || 0), 0)} Ft`;
     renderModalPlayerTransactions();
     showToast('Tranzakció törölve.');
 }
 
-function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); window.AppState.selectedPaymentUsername = null; }
+function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); window.AppState.selectedPaymentUserId = null; }
 function adjustModalAmount(delta) { const inp = document.getElementById('modal-amount-input'); inp.value = Math.max(500, (parseInt(inp.value) || 0) + delta); }
 
 function savePayment() {
     const state = window.AppState;
-    if (!state.isAdmin || !state.selectedPaymentUsername) return;
+    if (!state.isAdmin || !state.selectedPaymentUserId) return;
     const amount = parseInt(document.getElementById('modal-amount-input').value) || 0;
     const type = document.getElementById('modal-trans-type').value;
     if (amount <= 0) return showToast('Érvénytelen összeg!');
     
     const today = new Date();
     const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
-    const userTrans = state.transactions[state.selectedPaymentUsername] || [];
+    const userTrans = state.transactions[state.selectedPaymentUserId] || [];
     userTrans.push({ amount, date: dateStr, type });
 
     const { db, ref, set } = window.FB;
-    set(ref(db, `transactions/${state.selectedPaymentUsername}`), userTrans);
+    set(ref(db, `transactions/${state.selectedPaymentUserId}`), userTrans);
     closePaymentModal();
     showToast('Befizetés rögzítve!');
 }
@@ -860,58 +985,76 @@ function openMatchMode(matchIndex = null) {
     document.getElementById('match-mode-section').classList.remove('hidden');
     document.getElementById('match-mode-date-label').innerText = `Dátum: ${matchIndex !== null ? state.matches[matchIndex].date : state.nextMatch.date}`;
 
-    const teamAPaid = document.getElementById('team-a-players');
-    const teamBPaid = document.getElementById('team-b-players');
-    teamAPaid.innerHTML = ''; teamBPaid.innerHTML = '';
+    const teamAContainer = document.getElementById('team-a-players');
+    const teamBContainer = document.getElementById('team-b-players');
+    teamAContainer.innerHTML = ''; teamBContainer.innerHTML = '';
 
     let activeList = [];
     if (matchIndex !== null) {
-        (state.matches[matchIndex].teamA || []).forEach(p => activeList.push({ ...p, team: 'A' }));
-        (state.matches[matchIndex].teamB || []).forEach(p => activeList.push({ ...p, team: 'B' }));
+        (state.matches[matchIndex].teamA || []).forEach(p => activeList.push({ ...p, id: String(p.id || p.username || ''), team: 'A' }));
+        (state.matches[matchIndex].teamB || []).forEach(p => activeList.push({ ...p, id: String(p.id || p.username || ''), team: 'B' }));
     } else {
         activeList = Object.entries(state.nextMatch.attendances || {})
             .filter(([_, d]) => d.status === 'yes')
-            .map(([uname, d], idx) => ({ username: uname, name: d.name, team: idx % 2 === 0 ? 'A' : 'B', goals: 0, isSubstitute: d.isSubstitute === true }));
+            .map(([uid, d], idx) => ({ id: String(uid), name: state.users[uid]?.name || d.name, team: idx % 2 === 0 ? 'A' : 'B', goals: 0, isSubstitute: d.isSubstitute === true }));
     }
 
-    activeList.forEach(p => renderPlayerRow(p, teamAPaid, teamBPaid));
+    activeList.forEach(p => renderPlayerRow(p, teamAContainer, teamBContainer));
     updateMatchScores();
 }
 
 function renderPlayerRow(p, teamAContainer, teamBContainer) {
     const el = document.createElement('div');
     el.className = 'flex items-center justify-between p-2 bg-white rounded-lg text-xs player-row border border-gray-200 shadow-2xs';
-    el.dataset.username = p.username || '';
+    el.dataset.userid = p.id || '';
     el.dataset.name = p.name;
     el.dataset.isSubstitute = p.isSubstitute ? 'true' : 'false';
+    el.dataset.team = p.team;
 
-    el.innerHTML = `
-        <div class="flex items-center space-x-1.5">
-            ${p.isSubstitute ? '<span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Beugró</span>' : ''}
-            <span class="font-semibold text-gray-800">${window.formatHungarianName(p.name)}</span>
-        </div>
-        <div class="flex items-center space-x-2">
-            <select class="team-select bg-gray-50 text-xs rounded border border-gray-200 px-2 py-1 font-medium">
-                <option value="A" ${p.team === 'A' ? 'selected' : ''}>A Csapat</option>
-                <option value="B" ${p.team === 'B' ? 'selected' : ''}>B Csapat</option>
-            </select>
-            <div class="flex items-center border border-gray-200 rounded bg-white">
-                <button type="button" class="btn-minus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">-</button>
-                <span class="player-goals px-2 font-bold text-gray-800">${p.goals || 0}</span>
-                <button type="button" class="btn-plus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">+</button>
+    const updateRowLayout = () => {
+        const isTeamA = el.dataset.team === 'A';
+        const goalsVal = el.querySelector('.player-goals') ? el.querySelector('.player-goals').innerText : (p.goals || 0);
+        el.innerHTML = `
+            <div class="flex items-center space-x-1.5">
+                ${p.isSubstitute ? '<span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Beugró</span>' : ''}
+                <span class="font-semibold text-gray-800">${window.formatHungarianName(p.name)}</span>
             </div>
-        </div>
-    `;
+            <div class="flex items-center space-x-2">
+                <div class="flex items-center border border-gray-200 rounded bg-white">
+                    <button type="button" class="btn-minus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">-</button>
+                    <span class="player-goals px-2 font-bold text-gray-800">${goalsVal}</span>
+                    <button type="button" class="btn-plus px-2 py-0.5 text-gray-500 hover:bg-gray-100 font-bold">+</button>
+                </div>
+                <button type="button" class="btn-switch-team px-2 py-1 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold transition" title="${isTeamA ? 'Áthelyezés a B csapatba' : 'Áthelyezés az A csapatba'}">
+                    ${isTeamA ? '→' : '←'}
+                </button>
+            </div>
+        `;
 
-    el.querySelector('.btn-minus').addEventListener('click', (e) => { const s = e.target.parentElement.querySelector('.player-goals'); s.innerText = Math.max(0, parseInt(s.innerText) - 1); updateMatchScores(); });
-    el.querySelector('.btn-plus').addEventListener('click', (e) => { const s = e.target.parentElement.querySelector('.player-goals'); s.innerText = parseInt(s.innerText) + 1; updateMatchScores(); });
-    
-    el.querySelector('.team-select').addEventListener('change', (e) => {
-        if (e.target.value === 'A') teamAContainer.appendChild(el);
-        else teamBContainer.appendChild(el);
-        updateMatchScores();
-    });
+        el.querySelector('.btn-minus').addEventListener('click', (e) => {
+            const s = e.target.parentElement.querySelector('.player-goals');
+            s.innerText = Math.max(0, parseInt(s.innerText) - 1);
+            updateMatchScores();
+        });
+        el.querySelector('.btn-plus').addEventListener('click', (e) => {
+            const s = e.target.parentElement.querySelector('.player-goals');
+            s.innerText = parseInt(s.innerText) + 1;
+            updateMatchScores();
+        });
+        el.querySelector('.btn-switch-team').addEventListener('click', () => {
+            if (el.dataset.team === 'A') {
+                el.dataset.team = 'B';
+                teamBContainer.appendChild(el);
+            } else {
+                el.dataset.team = 'A';
+                teamAContainer.appendChild(el);
+            }
+            updateRowLayout();
+            updateMatchScores();
+        });
+    };
 
+    updateRowLayout();
     if (p.team === 'A') teamAContainer.appendChild(el);
     else teamBContainer.appendChild(el);
 }
@@ -951,24 +1094,24 @@ function saveMatchResults() {
 
     const teamA = [], teamB = [];
     let scoreA = 0, scoreB = 0;
-    const participantsUsernames = [];
+    const participantIds = [];
 
     teamAEls.forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
-        const uname = r.dataset.username;
-        teamA.push({ username: isSub ? '' : uname, name: r.dataset.name, goals, isSubstitute: isSub });
+        const uid = r.dataset.userid;
+        teamA.push({ id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub });
         scoreA += goals;
-        if (!isSub && uname) participantsUsernames.push(uname);
+        if (!isSub && uid) participantIds.push(uid);
     });
 
     teamBEls.forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
-        const uname = r.dataset.username;
-        teamB.push({ username: isSub ? '' : uname, name: r.dataset.name, goals, isSubstitute: isSub });
+        const uid = r.dataset.userid;
+        teamB.push({ id: isSub ? '' : uid, name: r.dataset.name, goals, isSubstitute: isSub });
         scoreB += goals;
-        if (!isSub && uname) participantsUsernames.push(uname);
+        if (!isSub && uid) participantIds.push(uid);
     });
 
     const matchRecord = { date: state.editingMatchIndex !== null ? state.matches[state.editingMatchIndex].date : state.nextMatch.date, scoreA, scoreB, teamA, teamB };
@@ -979,10 +1122,10 @@ function saveMatchResults() {
     } else {
         state.matches.push(matchRecord);
         const feeDeduction = -(state.nextMatch.feePerPerson || 1000);
-        participantsUsernames.forEach(uname => {
-            const ut = state.transactions[uname] || [];
+        participantIds.forEach(uid => {
+            const ut = state.transactions[uid] || [];
             ut.push({ amount: feeDeduction, date: matchRecord.date, type: 'match' });
-            set(ref(db, `transactions/${uname}`), ut);
+            set(ref(db, `transactions/${uid}`), ut);
         });
 
         state.treasury.push({ amount: -(state.nextMatch.courtFee || 18000), date: matchRecord.date, type: 'expense', note: 'Pályadíj' });

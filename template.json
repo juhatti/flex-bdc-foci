@@ -5,18 +5,68 @@
       "scoreA": 4,
       "scoreB": 9,
       "teamA": [
-        { "goals": 1, "isSubstitute": false, "name": "Admin User", "username": "admin" },
-        { "goals": 0, "isSubstitute": false, "name": "Játékos Egy", "username": "user1" },
-        { "goals": 1, "isSubstitute": false, "name": "Játékos Kettő", "username": "user2" },
-        { "goals": 2, "isSubstitute": false, "name": "Játékos Három", "username": "user3" },
-        { "goals": 0, "isSubstitute": false, "name": "Játékos Négy", "username": "user4" }
+        {
+          "goals": 1,
+          "id": "100",
+          "isSubstitute": false,
+          "name": "Admin User"
+        },
+        {
+          "goals": 0,
+          "id": "101",
+          "isSubstitute": false,
+          "name": "Játékos Egy"
+        },
+        {
+          "goals": 1,
+          "id": "102",
+          "isSubstitute": false,
+          "name": "Játékos Kettő"
+        },
+        {
+          "goals": 2,
+          "id": "103",
+          "isSubstitute": false,
+          "name": "Játékos Három"
+        },
+        {
+          "goals": 0,
+          "id": "104",
+          "isSubstitute": false,
+          "name": "Játékos Négy"
+        }
       ],
       "teamB": [
-        { "goals": 0, "isSubstitute": false, "name": "Játékos Öt", "username": "user5" },
-        { "goals": 3, "isSubstitute": false, "name": "Játékos Hat", "username": "user6" },
-        { "goals": 1, "isSubstitute": false, "name": "Játékos Hét", "username": "user7" },
-        { "goals": 1, "isSubstitute": false, "name": "Játékos Nyolc", "username": "user8" },
-        { "goals": 4, "isSubstitute": false, "name": "Játékos Kilenc", "username": "user9" }
+        {
+          "goals": 0,
+          "id": "105",
+          "isSubstitute": false,
+          "name": "Játékos Öt"
+        },
+        {
+          "goals": 3,
+          "id": "106",
+          "isSubstitute": false,
+          "name": "Játékos Hat"
+        },
+        {
+          "goals": 1,
+          "id": "107",
+          "isSubstitute": false,
+          "name": "Játékos Hét"
+        },
+        {
+          "goals": 1,
+          "id": "108",
+          "isSubstitute": false,
+          "name": "Játékos Nyolc"
+        },
+        {
+          "goals": 4,
+          "id": "109",
+          "isSubstitute": false,
+          "name": "Játékos Kilenc"
+        }
       ]
     },
     {
@@ -24,34 +74,87 @@
       "scoreA": 5,
       "scoreB": 3,
       "teamA": [
-        { "goals": 2, "isSubstitute": false, "name": "Admin User", "username": "admin" },
-        { "goals": 1, "isSubstitute": false, "name": "Játékos Egy", "username": "user1" },
-        { "goals": 2, "isSubstitute": false, "name": "Játékos Három", "username": "user3" },
-        { "goals": 0, "isSubstitute": false, "name": "Játékos Öt", "username": "user5" },
-        { "goals": 0, "isSubstitute": false, "name": "Játékos Hét", "username": "user7" }
+        {
+          "goals": 2,
+          "id": "100",
+          "isSubstitute": false,
+          "name": "Admin User"
+        },
+        {
+          "goals": 1,
+          "id": "101",
+          "isSubstitute": false,
+          "name": "Játékos Egy"
+        },
+        {
+          "goals": 2,
+          "id": "103",
+          "isSubstitute": false,
+          "name": "Játékos Három"
+        },
+        {
+          "goals": 0,
+          "id": "105",
+          "isSubstitute": false,
+          "name": "Játékos Öt"
+        },
+        {
+          "goals": 0,
+          "id": "107",
+          "isSubstitute": false,
+          "name": "Játékos Hét"
+        }
       ],
       "teamB": [
-        { "goals": 1, "isSubstitute": false, "name": "Játékos Kettő", "username": "user2" },
-        { "goals": 1, "isSubstitute": false, "name": "Játékos Négy", "username": "user4" },
-        { "goals": 1, "isSubstitute": false, "name": "Játékos Hat", "username": "user6" },
-        { "goals": 0, "isSubstitute": false, "name": "Játékos Nyolc", "username": "user8" },
-        { "goals": 0, "isSubstitute": false, "name": "Játékos Kilenc", "username": "user9" }
+        {
+          "goals": 1,
+          "id": "102",
+          "isSubstitute": false,
+          "name": "Játékos Kettő"
+        },
+        {
+          "goals": 1,
+          "id": "104",
+          "isSubstitute": false,
+          "name": "Játékos Négy"
+        },
+        {
+          "goals": 1,
+          "id": "106",
+          "isSubstitute": false,
+          "name": "Játékos Hat"
+        },
+        {
+          "goals": 0,
+          "id": "108",
+          "isSubstitute": false,
+          "name": "Játékos Nyolc"
+        },
+        {
+          "goals": 0,
+          "id": "109",
+          "isSubstitute": false,
+          "name": "Játékos Kilenc"
+        }
       ]
     }
   ],
   "nextMatch": {
     "attendances": {
-      "admin": {
+      "100": {
+        "id": "100",
         "name": "Admin User",
         "note": "",
         "status": "yes"
       },
-      "user1": {
+      "101": {
+        "id": "101",
         "name": "Játékos Egy",
         "note": "Késik 10 percet",
         "status": "yes"
       },
-      "user2": {
+      "102": {
+        "id": "102",
         "name": "Játékos Kettő",
         "note": "",
         "status": "no"
@@ -61,17 +164,30 @@
     "date": "2026. 02. 03.",
     "endTime": "10:00",
     "feePerPerson": 1000,
+    "location": "ELTE Sport Kft Bogdánfy úti sporttelep",
     "startTime": "09:00"
   },
   "transactions": {
-    "user1": [
-      { "amount": -2000, "date": "2026. 01. 01.", "type": "initial" }
+    "101": [
+      {
+        "amount": -2000,
+        "date": "2026. 01. 01.",
+        "type": "initial"
+      }
     ],
-    "user2": [
-      { "amount": 3000, "date": "2026. 01. 01.", "type": "initial" }
+    "102": [
+      {
+        "amount": 3000,
+        "date": "2026. 01. 01.",
+        "type": "initial"
+      }
     ],
-    "user3": [
-      { "amount": 1000, "date": "2026. 01. 01.", "type": "initial" }
+    "103": [
+      {
+        "amount": 1000,
+        "date": "2026. 01. 01.",
+        "type": "initial"
+      }
     ]
   },
   "treasury": [
@@ -83,39 +199,45 @@
     }
   ],
   "users": {
-    "admin": {
+    "100": {
       "admin": "yes",
       "email": "admin@bdc.com",
+      "id": "100",
       "name": "Admin User",
       "username": "admin"
     },
-    "user1": {
+    "101": {
       "admin": "no",
       "email": "user1@bdc.com",
+      "id": "101",
       "name": "Játékos Egy",
       "username": "user1"
     },
-    "user2": {
+    "102": {
       "admin": "no",
       "email": "user2@bdc.com",
+      "id": "102",
       "name": "Játékos Kettő",
       "username": "user2"
     },
-    "user3": {
+    "103": {
       "admin": "no",
       "email": "user3@bdc.com",
+      "id": "103",
       "name": "Játékos Három",
       "username": "user3"
     },
-    "user4": {
+    "104": {
       "admin": "no",
       "email": "user4@bdc.com",
+      "id": "104",
       "name": "Játékos Négy",
       "username": "user4"
     },
-    "user5": {
+    "105": {
       "admin": "no",
       "email": "user5@bdc.com",
+      "id": "105",
       "name": "Játékos Öt",
       "username": "user5"
     }
