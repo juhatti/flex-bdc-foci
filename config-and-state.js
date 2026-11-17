@@ -20,6 +20,7 @@ window.AppState = {
     currentMatchPage: 0,
     currentMyTransPage: 0,
     currentTreasuryPage: 0,
+    currentModalTransPage: 0,
     selectedYear: 2026,
     selectedPaymentUserId: null,
     activeTab: 'matches'

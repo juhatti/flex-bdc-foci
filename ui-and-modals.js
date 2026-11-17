@@ -46,6 +46,9 @@ function initFirebaseListeners() {
     onValue(ref(db, 'transactions'), (snapshot) => {
         state.transactions = snapshot.val() || {};
         renderApp();
+        if (state.selectedPaymentUserId) {
+            renderModalPlayerTransactions();
+        }
     });
 
     onValue(ref(db, 'treasury'), (snapshot) => {
@@ -89,6 +92,8 @@ function bindEvents() {
     document.getElementById('next-my-trans-btn').addEventListener('click', nextMyTransPage);
     document.getElementById('prev-treasury-btn').addEventListener('click', prevTreasuryPage);
     document.getElementById('next-treasury-btn').addEventListener('click', nextTreasuryPage);
+    document.getElementById('prev-modal-trans-btn').addEventListener('click', prevModalTransPage);
+    document.getElementById('next-modal-trans-btn').addEventListener('click', nextModalTransPage);
 
     // Player payment modal
     document.getElementById('close-payment-modal-btn').addEventListener('click', closePaymentModal);
@@ -115,6 +120,13 @@ function bindEvents() {
     window.addEventListener('click', () => {
         yearMenu.classList.add('hidden');
     });
+}
+
+function getTransactionTypeLabel(type) {
+    if (type === 'match') return 'Meccs pályadíj';
+    if (type === 'initial') return 'Kezdőegyenleg';
+    if (type === 'expense') return 'Kiadás';
+    return 'Befizetés';
 }
 
 function generateUniqueUserId() {
@@ -726,6 +738,21 @@ function nextTreasuryPage() {
     if (window.AppState.currentTreasuryPage < Math.ceil(len / 3) - 1) { window.AppState.currentTreasuryPage++; renderFinances(); }
 }
 
+function prevModalTransPage() {
+    if (window.AppState.currentModalTransPage > 0) {
+        window.AppState.currentModalTransPage--;
+        renderModalPlayerTransactions();
+    }
+}
+function nextModalTransPage() {
+    const uid = String(window.AppState.selectedPaymentUserId || '');
+    const len = (window.AppState.transactions[uid] || []).length;
+    if (window.AppState.currentModalTransPage < Math.ceil(len / 3) - 1) {
+        window.AppState.currentModalTransPage++;
+        renderModalPlayerTransactions();
+    }
+}
+
 window.renderFinances = function() {
     const state = window.AppState;
     if (!state.currentUser) return;
@@ -778,7 +805,7 @@ window.renderFinances = function() {
     } else {
         pageMyTrans.forEach(t => {
             const isPos = t.amount >= 0;
-            const typeLabel = t.type === 'match' ? 'Meccs pályadíj' : t.type === 'initial' ? 'Kezdőegyenleg' : 'Befizetés';
+            const typeLabel = getTransactionTypeLabel(t.type);
             const row = document.createElement('div');
             row.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs';
             row.innerHTML = `<div><span class="font-semibold text-gray-800 block">${typeLabel}</span><span class="text-[10px] text-gray-400">${t.date}</span></div><span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>`;
@@ -878,8 +905,10 @@ function openPaymentModal(userId, name, currentBal) {
     const state = window.AppState;
     if (!state.isAdmin) return;
     state.selectedPaymentUserId = String(userId);
+    state.currentModalTransPage = 0;
     document.getElementById('modal-user-name').innerText = `${window.formatHungarianName(name)} (#${userId})`;
     document.getElementById('modal-user-balance').innerText = `${currentBal > 0 ? '+' : ''}${currentBal.toLocaleString()} Ft`;
+    document.getElementById('modal-trans-type').value = 'payment';
     document.getElementById('modal-amount-input').value = 1000;
     renderModalPlayerTransactions();
     document.getElementById('payment-modal').classList.remove('hidden');
@@ -888,14 +917,54 @@ function openPaymentModal(userId, name, currentBal) {
 function renderModalPlayerTransactions() {
     const state = window.AppState;
     const container = document.getElementById('modal-user-last-trans');
+    const paginationContainer = document.getElementById('modal-trans-pagination');
     container.innerHTML = '';
+
     const userTrans = state.transactions[state.selectedPaymentUserId] || [];
-    [...userTrans].slice(-3).reverse().forEach(t => {
+    const currentBal = userTrans.reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
+    document.getElementById('modal-user-balance').innerText = `${currentBal > 0 ? '+' : ''}${currentBal.toLocaleString()} Ft`;
+
+    const reversedTrans = [...userTrans].reverse();
+    const pageSize = 3;
+    const totalPages = Math.ceil(reversedTrans.length / pageSize) || 1;
+
+    if (state.currentModalTransPage >= totalPages) state.currentModalTransPage = totalPages - 1;
+    if (state.currentModalTransPage < 0) state.currentModalTransPage = 0;
+
+    if (reversedTrans.length > pageSize) {
+        paginationContainer.classList.remove('hidden');
+        document.getElementById('modal-trans-page-indicator').innerText = `${state.currentModalTransPage + 1} / ${totalPages}`;
+        document.getElementById('prev-modal-trans-btn').disabled = state.currentModalTransPage === 0;
+        document.getElementById('next-modal-trans-btn').disabled = state.currentModalTransPage >= totalPages - 1;
+    } else {
+        paginationContainer.classList.add('hidden');
+    }
+
+    const pageTrans = reversedTrans.slice(state.currentModalTransPage * pageSize, (state.currentModalTransPage + 1) * pageSize);
+
+    if (pageTrans.length === 0) {
+        container.innerHTML = `<p class="text-[11px] text-gray-400 text-center py-2">Nincs rögzített tranzakció.</p>`;
+        return;
+    }
+
+    pageTrans.forEach(t => {
         const origIdx = userTrans.indexOf(t);
         const isPos = t.amount >= 0;
+        const typeLabel = getTransactionTypeLabel(t.type);
         const div = document.createElement('div');
-        div.className = 'flex justify-between items-center bg-gray-50 p-1.5 rounded text-[11px]';
-        div.innerHTML = `<div><span class="text-gray-500">${t.date}</span><span class="font-bold ml-1 ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${t.amount} Ft</span></div><button type="button" class="text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded bg-red-50 font-bold"><i class="fa-solid fa-trash text-[10px]"></i></button>`;
+        div.className = 'flex justify-between items-center bg-gray-50 p-1.5 rounded text-[11px] border border-gray-100';
+        div.innerHTML = `
+            <div class="truncate pr-2">
+                <span class="font-semibold text-gray-800">${typeLabel}</span>
+                <span class="text-gray-400 text-[10px] ml-1">${t.date}</span>
+            </div>
+            <div class="flex items-center space-x-1.5 shrink-0">
+                <span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>
+                <button type="button" class="text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded bg-red-50 font-bold" title="Tranzakció törlése">
+                    <i class="fa-solid fa-trash text-[10px]"></i>
+                </button>
+            </div>
+        `;
         div.querySelector('button').addEventListener('click', () => deletePlayerTransaction(origIdx));
         container.appendChild(div);
     });
@@ -908,20 +977,30 @@ function deletePlayerTransaction(idx) {
     userTrans.splice(idx, 1);
     const { db, ref, set } = window.FB;
     set(ref(db, `transactions/${state.selectedPaymentUserId}`), userTrans);
-    document.getElementById('modal-user-balance').innerText = `${userTrans.reduce((s, t) => s + parseInt(t.amount || 0), 0)} Ft`;
     renderModalPlayerTransactions();
     showToast('Tranzakció törölve.');
 }
 
-function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); window.AppState.selectedPaymentUserId = null; }
-function adjustModalAmount(delta) { const inp = document.getElementById('modal-amount-input'); inp.value = Math.max(500, (parseInt(inp.value) || 0) + delta); }
+function closePaymentModal() {
+    document.getElementById('payment-modal').classList.add('hidden');
+    window.AppState.selectedPaymentUserId = null;
+}
+
+function adjustModalAmount(delta) {
+    const inp = document.getElementById('modal-amount-input');
+    inp.value = Math.max(500, (parseInt(inp.value) || 0) + delta);
+}
 
 function savePayment() {
     const state = window.AppState;
     if (!state.isAdmin || !state.selectedPaymentUserId) return;
-    const amount = parseInt(document.getElementById('modal-amount-input').value) || 0;
+    let amount = Math.abs(parseInt(document.getElementById('modal-amount-input').value) || 0);
     const type = document.getElementById('modal-trans-type').value;
     if (amount <= 0) return showToast('Érvénytelen összeg!');
+
+    if (type === 'expense') {
+        amount = -amount;
+    }
     
     const today = new Date();
     const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
@@ -931,7 +1010,7 @@ function savePayment() {
     const { db, ref, set } = window.FB;
     set(ref(db, `transactions/${state.selectedPaymentUserId}`), userTrans);
     closePaymentModal();
-    showToast('Befizetés rögzítve!');
+    showToast(type === 'expense' ? 'Kiadás rögzítve!' : 'Befizetés rögzítve!');
 }
 
 function openTreasuryModal() {
@@ -1092,7 +1171,6 @@ function toggleSwapMode() {
         wrapperA.classList.remove('hidden');
         wrapperB.classList.remove('hidden');
     } else {
-        // Revert and clear all swaps when toggling swap mode off
         swapToggleBtn.className = 'px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition flex items-center space-x-1.5 border border-gray-200';
         wrapperA.classList.add('hidden');
         wrapperB.classList.add('hidden');
@@ -1138,7 +1216,6 @@ function renderPlayerRow(p, teamAContainer, teamBContainer) {
             ? 'btn-player-swap px-2 py-1 rounded border border-purple-600 bg-purple-600 text-white font-bold transition'
             : 'btn-player-swap px-2 py-1 rounded border border-gray-200 bg-transparent hover:bg-purple-50 text-gray-500 font-bold transition';
 
-        // Goal counter is always the rightmost element
         el.innerHTML = `
             <div class="flex items-center space-x-1.5">
                 <button type="button" class="${swapBtnClasses} ${window.AppState.isSwapModeActive ? '' : 'hidden'}" title="Átállt a másik csapatba meccs közben">
@@ -1170,7 +1247,6 @@ function renderPlayerRow(p, teamAContainer, teamBContainer) {
             updateMatchScores();
         });
         el.querySelector('.btn-switch-team').addEventListener('click', () => {
-            // Remove existing swap duplicate if switching initial team
             if (el.dataset.swapped === 'true') {
                 removeSwappedDuplicate(el.dataset.userid, el.dataset.name);
                 el.dataset.swapped = 'false';
@@ -1308,7 +1384,6 @@ function saveMatchResults() {
     let scoreA = 0, scoreB = 0;
     const participantIdsSet = new Set();
 
-    // Collect custom outcomes selected on swapped rows so both records know the player's match outcome
     const swappedOutcomes = {};
     document.querySelectorAll('#team-a-swaps .swap-player-row, #team-b-swaps .swap-player-row').forEach(r => {
         const uid = r.dataset.userid;
@@ -1318,7 +1393,6 @@ function saveMatchResults() {
         }
     });
 
-    // Starting players in Team A
     teamAEls.forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
@@ -1332,7 +1406,6 @@ function saveMatchResults() {
         if (!isSub && uid) participantIdsSet.add(uid);
     });
 
-    // Swapped players in Team A
     document.querySelectorAll('#team-a-swaps .swap-player-row').forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
@@ -1343,7 +1416,6 @@ function saveMatchResults() {
         if (!isSub && uid) participantIdsSet.add(uid);
     });
 
-    // Starting players in Team B
     teamBEls.forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
@@ -1357,7 +1429,6 @@ function saveMatchResults() {
         if (!isSub && uid) participantIdsSet.add(uid);
     });
 
-    // Swapped players in Team B
     document.querySelectorAll('#team-b-swaps .swap-player-row').forEach(r => {
         const goals = parseInt(r.querySelector('.player-goals').innerText || 0);
         const isSub = r.dataset.isSubstitute === 'true';
