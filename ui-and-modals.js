@@ -59,7 +59,6 @@ function initFirebaseListeners() {
 }
 
 function bindEvents() {
-    document.getElementById('login-username').addEventListener('input', (e) => checkAdminUsername(e.target.value));
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('register-form').addEventListener('submit', handleRegister);
     document.getElementById('logout-btn').addEventListener('click', logout);
@@ -203,37 +202,36 @@ window.formatHungarianName = function(fullName) {
     return `${initial}. ${firstName}`;
 }
 
-function checkAdminUsername(val) {
-    const passContainer = document.getElementById('admin-pass-container');
-    if (val.trim().toLowerCase() === 'admin') {
-        passContainer.classList.remove('hidden');
-    } else {
-        passContainer.classList.add('hidden');
-    }
-}
-
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
     const state = window.AppState;
     const usernameInput = document.getElementById('login-username').value.trim().toLowerCase();
-    const passInput = document.getElementById('login-password').value.trim();
+    if (!usernameInput) return;
 
-    if (usernameInput === 'admin') {
-        if (passInput === 'arsenal') {
-            const existingAdmin = Object.values(state.users).find(u => u.username === 'admin');
-            state.currentUser = existingAdmin || { id: '100', username: 'admin', name: 'Juhász Attila (Admin)', admin: true, email: 'juhatti@gmail.com' };
-            state.isAdmin = true;
-            saveSession();
-        } else {
-            showToast('Hibás adminisztrátori jelszó!');
+    let matchedUser = Object.values(state.users).find(u => (u.username || '').toLowerCase() === usernameInput);
+
+    if (!matchedUser && window.FB) {
+        try {
+            const { db, ref, get } = window.FB;
+            const snapshot = await get(ref(db, 'users'));
+            if (snapshot.exists()) {
+                const rawUsers = snapshot.val() || {};
+                const normalized = {};
+                Object.entries(rawUsers).forEach(([key, u]) => {
+                    const uid = String(u.id || key);
+                    normalized[uid] = { ...u, id: uid };
+                });
+                state.users = normalized;
+                matchedUser = Object.values(normalized).find(u => (u.username || '').toLowerCase() === usernameInput);
+            }
+        } catch (err) {
+            console.error("Firebase login check error:", err);
         }
-        return;
     }
 
-    const matchedUser = Object.values(state.users).find(u => (u.username || '').toLowerCase() === usernameInput);
     if (matchedUser) {
         state.currentUser = matchedUser;
-        state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes' || state.currentUser.username === 'juhatti';
+        state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes';
         saveSession();
     } else {
         showToast('Nem található ilyen felhasználónév!');
@@ -248,7 +246,12 @@ function handleRegister(e) {
     const email = document.getElementById('reg-email').value.trim();
     const username = document.getElementById('reg-username').value.trim().toLowerCase();
 
-    const usernameExists = Object.values(state.users).some(u => (u.username || '').toLowerCase() === username) || username === 'admin';
+    if (!lastName || !firstName || !email || !username) {
+        showToast('Kérlek tölts ki minden mezőt!');
+        return;
+    }
+
+    const usernameExists = Object.values(state.users).some(u => (u.username || '').toLowerCase() === username);
     if (usernameExists) {
         showToast('Ez a felhasználónév már foglalt!');
         return;
@@ -260,15 +263,14 @@ function handleRegister(e) {
         username,
         name: `${lastName} ${firstName}`,
         email,
-        admin: username === 'juhatti' ? 'yes' : 'no'
+        admin: 'no'
     };
 
     const { db, ref, set } = window.FB;
     set(ref(db, `users/${newId}`), newUser);
     state.currentUser = newUser;
-    state.isAdmin = username === 'juhatti';
+    state.isAdmin = false;
     saveSession();
-    toggleAuthMode('login');
     showToast('Sikeres regisztráció!');
 }
 
