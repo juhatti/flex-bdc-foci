@@ -66,8 +66,6 @@
 
         <!-- LOGIN SCREEN -->
         <section id="auth-section" class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 max-w-md mx-auto">
-            <h2 class="text-xl font-bold text-center text-gray-800 mb-6">Belépés</h2>
-            
             <form id="login-form" class="space-y-4">
                 <div>
                     <input type="text" id="login-username" required 
@@ -82,12 +80,14 @@
             </form>
 
             <div class="mt-6 pt-6 border-t border-gray-100 text-center">
-                <p class="text-sm text-gray-500">Még nincs fiókod?</p>
                 <button id="go-to-register" class="mt-2 text-sm text-emerald-600 font-semibold hover:underline">
                     Új játékos regisztrációja
                 </button>
             </div>
         </section>
+
+        <!-- LOGIN WIDGET CONTAINER (Előző meccs + Tabella/Góllövőlista max-w-md) -->
+        <div id="login-widget-container" class="max-w-md mx-auto space-y-4 hidden"></div>
 
         <!-- REGISTER SCREEN -->
         <section id="register-section" class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 max-w-md mx-auto hidden">
@@ -379,10 +379,14 @@
             <!-- 3. STANDINGS TAB VIEW -->
             <div id="tab-content-standings" class="space-y-8 hidden">
                 <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">Tabella</h3>
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3">
+                        <div class="bg-gray-100 p-1 rounded-2xl flex relative text-xs font-semibold w-full sm:w-56 h-10 items-center">
+                            <div id="standings-slider-thumb" class="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-200 left-1"></div>
+                            <button id="slider-tab-standings" type="button" onclick="setStandingsMode('standings')" class="flex-1 py-2 text-center relative z-10 text-gray-900 font-bold transition">Tabella</button>
+                            <button id="slider-tab-scorers" type="button" onclick="setStandingsMode('scorers')" class="flex-1 py-2 text-center relative z-10 text-gray-500 transition">Góllövőlista</button>
+                        </div>
                         <div class="relative">
-                            <button id="year-dropdown-btn" class="text-xs font-semibold px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition flex items-center space-x-1.5">
+                            <button id="year-dropdown-btn" class="text-xs font-semibold px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition flex items-center space-x-1.5">
                                 <span id="selected-year-label">2026</span>
                                 <i class="fa-solid fa-chevron-down text-[10px]"></i>
                             </button>

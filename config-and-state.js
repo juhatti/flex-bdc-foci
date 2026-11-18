@@ -4,7 +4,7 @@ window.AppState = {
     isAdmin: false,
     users: {},
     nextMatch: { 
-        date: "2026. 10. 27.", 
+        date: "2026. 11. 24.", 
         startTime: "09:00", 
         endTime: "10:00", 
         location: "ELTE Sport Kft Bogdánfy úti sporttelep",
@@ -23,5 +23,6 @@ window.AppState = {
     currentModalTransPage: 0,
     selectedYear: 2026,
     selectedPaymentUserId: null,
-    activeTab: 'matches'
+    activeTab: 'matches',
+    standingsMode: 'standings' // 'standings' or 'scorers'
 };

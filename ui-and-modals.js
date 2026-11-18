@@ -306,12 +306,17 @@ function logout() {
 }
 
 function toggleAuthMode(mode) {
+    const loginWidget = document.getElementById('login-widget-container');
     if (mode === 'register') {
         document.getElementById('auth-section').classList.add('hidden');
+        if (loginWidget) loginWidget.classList.add('hidden');
         document.getElementById('register-section').classList.remove('hidden');
     } else {
         document.getElementById('register-section').classList.add('hidden');
         document.getElementById('auth-section').classList.remove('hidden');
+        if (typeof window.renderStandings === 'function') {
+            window.renderStandings();
+        }
     }
 }
 
@@ -437,6 +442,11 @@ function renderApp() {
     if (state.currentUser) {
         authSec.classList.add('hidden');
         document.getElementById('register-section').classList.add('hidden');
+        const loginWidget = document.getElementById('login-widget-container');
+        if (loginWidget) {
+            loginWidget.classList.add('hidden');
+            loginWidget.innerHTML = '';
+        }
         dashSec.classList.remove('hidden');
         userHeader.classList.remove('hidden');
         navMenuBar.classList.remove('hidden');
@@ -462,6 +472,9 @@ function renderApp() {
         userHeader.classList.add('hidden');
         navMenuBar.classList.add('hidden');
         authSec.classList.remove('hidden');
+        if (typeof window.renderStandings === 'function') {
+            window.renderStandings();
+        }
     }
 }
 
