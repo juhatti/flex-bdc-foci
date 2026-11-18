@@ -18,9 +18,22 @@ function initFirebaseListeners() {
         });
         state.users = normalized;
 
-        if (state.currentUser && state.currentUser.id && state.users[state.currentUser.id]) {
-            state.currentUser = state.users[state.currentUser.id];
-            state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes' || state.currentUser.username === 'juhatti';
+        if (state.currentUser && state.currentUser.id) {
+            const dbUser = state.users[state.currentUser.id];
+            if (dbUser) {
+                if (dbUser.pending === true) {
+                    state.currentUser = null;
+                    state.isAdmin = false;
+                    localStorage.removeItem('flex_foci_user');
+                } else {
+                    state.currentUser = dbUser;
+                    state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes' || state.currentUser.username === 'juhatti';
+                }
+            } else if (Object.keys(state.users).length > 0) {
+                state.currentUser = null;
+                state.isAdmin = false;
+                localStorage.removeItem('flex_foci_user');
+            }
         }
         renderApp();
     });
@@ -230,6 +243,10 @@ async function handleLogin(e) {
     }
 
     if (matchedUser) {
+        if (matchedUser.pending === true) {
+            showToast('Regisztráció jóváhagyása függőben');
+            return;
+        }
         state.currentUser = matchedUser;
         state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes';
         saveSession();
@@ -263,15 +280,15 @@ function handleRegister(e) {
         username,
         name: `${lastName} ${firstName}`,
         email,
-        admin: 'no'
+        admin: 'no',
+        pending: true
     };
 
     const { db, ref, set } = window.FB;
     set(ref(db, `users/${newId}`), newUser);
-    state.currentUser = newUser;
-    state.isAdmin = false;
-    saveSession();
-    showToast('Sikeres regisztráció!');
+    document.getElementById('register-form').reset();
+    toggleAuthMode('login');
+    showToast('Regisztráció elküldve! Jóváhagyása függőben.');
 }
 
 function saveSession() {
@@ -287,8 +304,12 @@ function checkAutoLogin() {
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
-            state.currentUser = parsed.user;
-            state.isAdmin = parsed.isAdmin;
+            if (parsed.user && parsed.user.pending === true) {
+                localStorage.removeItem('flex_foci_user');
+            } else {
+                state.currentUser = parsed.user;
+                state.isAdmin = parsed.isAdmin;
+            }
         } catch(e) {
             localStorage.removeItem('flex_foci_user');
         }
@@ -397,6 +418,7 @@ function handleSliderClick(e) {
         else nextStatus = 'yes';
     }
     const uid = String(state.currentUser.id);
+    if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
     const currentAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
     if (currentAtt.status !== nextStatus) {
         updateAttendanceDB(uid, nextStatus, currentAtt.note);
@@ -411,12 +433,27 @@ function saveAttendanceNote(val) {
     updateAttendanceDB(uid, currentAtt.status, val.trim());
 }
 
-function updateAttendanceDB(userId, status, note) {
+async function updateAttendanceDB(userId, status, note) {
     const state = window.AppState;
     const uid = String(userId);
     const userData = state.users[uid] || state.currentUser;
-    const { db, ref, set } = window.FB;
-    set(ref(db, `nextMatch/attendances/${uid}`), { id: uid, status, note: note || '', name: userData.name });
+    if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
+    const payload = { id: uid, status, note: note || '', name: userData.name };
+
+    // Optimistic UI update so the slider moves immediately
+    state.nextMatch.attendances[uid] = payload;
+    renderNextMatchCard();
+    renderAttendeesList();
+
+    if (window.FB) {
+        const { db, ref, set, auth } = window.FB;
+        if (auth && auth.authStateReady) {
+            await auth.authStateReady();
+        }
+        set(ref(db, `nextMatch/attendances/${uid}`), payload).catch(err => {
+            console.error("Attendance update error:", err);
+        });
+    }
     document.getElementById('attendance-msg').classList.remove('opacity-0');
 }
 
@@ -462,6 +499,7 @@ function renderApp() {
             editMatchBtn.classList.add('hidden');
         }
 
+        renderPendingUsers();
         renderNextMatchCard();
         renderAttendeesList();
         renderLastMatches();
@@ -476,6 +514,70 @@ function renderApp() {
             window.renderStandings();
         }
     }
+}
+
+function renderPendingUsers() {
+    const state = window.AppState;
+    const section = document.getElementById('pending-users-section');
+    const list = document.getElementById('pending-users-list');
+    const countBadge = document.getElementById('pending-users-count');
+    if (!section || !list) return;
+
+    if (!state.isAdmin) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    const pendingUsers = Object.values(state.users).filter(u => u.pending === true);
+    if (pendingUsers.length === 0) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    if (countBadge) countBadge.innerText = pendingUsers.length;
+    list.innerHTML = '';
+
+    pendingUsers.forEach(u => {
+        const uid = String(u.id);
+        const row = document.createElement('div');
+        row.className = 'flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs gap-2';
+        row.innerHTML = `
+            <div>
+                <div class="font-bold text-gray-800">${u.name} <span class="text-gray-400 font-normal">(@${u.username} • #${uid})</span></div>
+                <div class="text-[11px] text-gray-500">${u.email || ''}</div>
+            </div>
+            <div class="flex items-center space-x-2 self-end sm:self-center">
+                <button type="button" class="btn-approve-user px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition shadow-2xs">
+                    <i class="fa-solid fa-check mr-1"></i> Jóváhagyás
+                </button>
+                <button type="button" class="btn-reject-user px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-lg transition border border-red-200">
+                    <i class="fa-solid fa-trash mr-1"></i> Törlés
+                </button>
+            </div>
+        `;
+        row.querySelector('.btn-approve-user').addEventListener('click', () => approvePendingUser(uid));
+        row.querySelector('.btn-reject-user').addEventListener('click', () => rejectPendingUser(uid));
+        list.appendChild(row);
+    });
+}
+
+function approvePendingUser(uid) {
+    const state = window.AppState;
+    if (!state.isAdmin || !state.users[uid]) return;
+    const { db, ref, set } = window.FB;
+    set(ref(db, `users/${uid}/pending`), null);
+    showToast(`${state.users[uid].name} regisztrációja jóváhagyva!`);
+}
+
+function rejectPendingUser(uid) {
+    const state = window.AppState;
+    if (!state.isAdmin || !state.users[uid]) return;
+    const userName = state.users[uid].name;
+    if (!confirm(`Biztosan törlöd ${userName} regisztrációját?`)) return;
+    const { db, ref, set } = window.FB;
+    set(ref(db, `users/${uid}`), null);
+    showToast(`${userName} regisztrációja törölve.`);
 }
 
 function renderNextMatchCard() {
@@ -610,7 +712,7 @@ function openAddPlayerModal() {
     container.innerHTML = '';
     
     const currentAttendees = state.nextMatch.attendances || {};
-    const unlistedUsers = Object.values(state.users).filter(u => !currentAttendees[String(u.id)]);
+    const unlistedUsers = Object.values(state.users).filter(u => u.pending !== true && !currentAttendees[String(u.id)]);
 
     if (unlistedUsers.length === 0) {
         container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">Minden regisztrált játékos szerepel már a listán.</p>`;
@@ -834,7 +936,7 @@ window.renderFinances = function() {
         const allBalList = document.getElementById('all-users-balances-list');
         allBalList.innerHTML = '';
 
-        const allUsersArr = Object.values(state.users);
+        const allUsersArr = Object.values(state.users).filter(u => u.pending !== true);
         allUsersArr.forEach(u => {
             const uIdStr = String(u.id);
             const bal = balances[uIdStr] || 0;
@@ -896,7 +998,7 @@ function exportFinancesList() {
 
     let text = `Egyenlegek - ${dateStr}\n\n`;
     
-    Object.values(state.users).forEach(u => {
+    Object.values(state.users).filter(u => u.pending !== true).forEach(u => {
         const uid = String(u.id);
         const bal = (state.transactions[uid] || []).reduce((sum, t) => sum + parseInt(t.amount || 0), 0);
         text += `${u.name} (#${uid}): ${bal >= 0 ? '+' : ''}${bal.toLocaleString()} Ft\n`;

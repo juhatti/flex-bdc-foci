@@ -6,7 +6,7 @@ window.renderStandings = function() {
     tbody.innerHTML = '';
 
     const statsMap = {};
-    Object.values(state.users).forEach(u => {
+    Object.values(state.users).filter(u => u.pending !== true).forEach(u => {
         const uid = String(u.id);
         statsMap[uid] = { 
             id: uid, 
@@ -199,7 +199,7 @@ function renderLoginWidget() {
     }
 
     const statsMap = {};
-    Object.values(state.users).forEach(u => {
+    Object.values(state.users).filter(u => u.pending !== true).forEach(u => {
         const uid = String(u.id);
         statsMap[uid] = { id: uid, name: u.name, M: 0, P: 0, G: 0 };
     });

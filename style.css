@@ -32,6 +32,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: manipulation;
+}
+
+.tri-slider-option i {
+    pointer-events: none;
 }
 
 .tri-slider-thumb {
