@@ -173,7 +173,7 @@
                             <div class="tri-slider-option text-white drop-shadow" data-status="no" title="Nem leszek ott">
                                 <i class="fa-solid fa-xmark"></i>
                             </div>
-                            <div class="tri-slider-option text-white drop-shadow" data-status="maybe" title="Kérdéses">
+                            <div id="slider-option-maybe" class="tri-slider-option text-white drop-shadow" data-status="maybe" title="Kérdéses">
                                 <i class="fa-solid fa-question"></i>
                             </div>
                             <div class="tri-slider-option text-white drop-shadow" data-status="yes" title="Ott leszek">
@@ -238,7 +238,11 @@
 
                     <div class="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-gray-100">
                         <span id="match-mode-date-label" class="text-xs text-gray-500">Dátum: 2026. 10. 27.</span>
-                        <div class="flex items-center space-x-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button id="cancel-match-session-btn" type="button" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-sm transition flex items-center space-x-1.5 border border-red-200">
+                                <i class="fa-solid fa-trash"></i>
+                                <span>Alkalom törlése</span>
+                            </button>
                             <button id="toggle-swap-mode-btn" type="button" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition flex items-center space-x-1.5 border border-gray-200">
                                 <i class="fa-solid fa-right-left"></i>
                                 <span>Cserék</span>
@@ -608,6 +612,28 @@
         </div>
     </div>
 
+    <!-- CANCEL MATCH SESSION CONFIRMATION MODAL -->
+    <div id="cancel-match-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-gray-100 space-y-4">
+            <div class="flex items-center space-x-3 text-red-600">
+                <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800">Meccs alkalom törlése</h3>
+            </div>
+            <p class="text-sm text-gray-600">
+                Biztosan törölni akarod a(z) <strong id="cancel-match-modal-date" class="text-gray-800"></strong> időpontra kiírt meccset?
+            </p>
+            <p class="text-xs text-gray-400">
+                A meccs nem kerül rögzítésre a korábbi meccsek közé, nem történik pénzügyi levonás, a dátum pedig automatikusan a következő hétre ugrik.
+            </p>
+            <div class="flex space-x-2 pt-2">
+                <button id="close-cancel-match-modal-btn" type="button" class="w-1/2 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition">Mégse</button>
+                <button id="confirm-cancel-match-btn" type="button" class="w-1/2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm transition">Törlés</button>
+            </div>
+        </div>
+    </div>
+
     <!-- UI TOAST -->
     <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white text-xs px-4 py-3 rounded-xl shadow-lg transition transform translate-y-20 opacity-0 pointer-events-none z-50 flex items-center space-x-2">
         <i class="fa-solid fa-circle-info text-emerald-400"></i>
@@ -617,8 +643,8 @@
     <!-- FIREBASE INIT IN HTML -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set, get, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBy-e4SGpdoAFDdk9goKyQySe6CvqsFDz4",
@@ -634,15 +660,32 @@
         const db = getDatabase(app);
         const auth = getAuth(app);
 
+        window.FB = { db, ref, set, get, onValue, off, auth, isAuthReady: false };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.FB.isAuthReady = true;
+                if (typeof window.initFirebaseListeners === 'function') {
+                    window.initFirebaseListeners(true);
+                }
+            }
+        });
+
         signInAnonymously(auth)
             .then(() => {
                 console.log("Firebase Anonymous Auth sikeres.");
+                window.FB.isAuthReady = true;
+                if (typeof window.initFirebaseListeners === 'function') {
+                    window.initFirebaseListeners(true);
+                }
             })
             .catch((error) => {
                 console.error("Firebase Auth hiba:", error.code, error.message);
+                window.FB.isAuthReady = true;
+                if (typeof window.initFirebaseListeners === 'function') {
+                    window.initFirebaseListeners(true);
+                }
             });
-
-        window.FB = { db, ref, set, get, onValue, auth };
     </script>
 
     <!-- SCRIPTS -->

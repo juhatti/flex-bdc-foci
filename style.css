@@ -53,6 +53,13 @@ body {
 .pos-mid  { transform: translateX(100%); background-color: #eab308; }    /* Yellow ? */
 .pos-right{ transform: translateX(200%); background-color: #22c55e; }    /* Green Check */
 
+.tri-slider-container.resolved .tri-slider-thumb {
+    width: calc(50% - 4px);
+}
+.tri-slider-container.resolved .pos-right {
+    transform: translateX(100%);
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }

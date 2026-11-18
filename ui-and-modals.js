@@ -1,15 +1,28 @@
 window.addEventListener('DOMContentLoaded', () => {
-    initFirebaseListeners();
     bindEvents();
     checkAutoLogin();
+    if (window.FB && window.FB.isAuthReady) {
+        initFirebaseListeners();
+    }
 });
 
-function initFirebaseListeners() {
-    if (!window.FB) return;
+let firebaseListenersInitialized = false;
+let firebaseUnsubscribers = [];
+window.initFirebaseListeners = function initFirebaseListeners(forceRestart = false) {
+    if (!window.FB || !window.FB.isAuthReady) return;
+    if (firebaseListenersInitialized && !forceRestart) return;
+
+    // Clean up any existing listeners before re-subscribing
+    firebaseUnsubscribers.forEach(unsub => {
+        try { if (typeof unsub === 'function') unsub(); } catch (e) {}
+    });
+    firebaseUnsubscribers = [];
+    firebaseListenersInitialized = true;
+
     const { db, ref, onValue } = window.FB;
     const state = window.AppState;
 
-    onValue(ref(db, 'users'), (snapshot) => {
+    firebaseUnsubscribers.push(onValue(ref(db, 'users'), (snapshot) => {
         const rawUsers = snapshot.val() || {};
         const normalized = {};
         Object.entries(rawUsers).forEach(([key, u]) => {
@@ -36,9 +49,9 @@ function initFirebaseListeners() {
             }
         }
         renderApp();
-    });
+    }));
 
-    onValue(ref(db, 'nextMatch'), (snapshot) => {
+    firebaseUnsubscribers.push(onValue(ref(db, 'nextMatch'), (snapshot) => {
         const val = snapshot.val();
         if (val) {
             state.nextMatch = val;
@@ -48,27 +61,27 @@ function initFirebaseListeners() {
             if (!state.nextMatch.location) state.nextMatch.location = "ELTE Sport Kft Bogdánfy úti sporttelep";
         }
         renderApp();
-    });
+    }));
 
-    onValue(ref(db, 'matches'), (snapshot) => {
+    firebaseUnsubscribers.push(onValue(ref(db, 'matches'), (snapshot) => {
         const val = snapshot.val();
         state.matches = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
         renderApp();
-    });
+    }));
 
-    onValue(ref(db, 'transactions'), (snapshot) => {
+    firebaseUnsubscribers.push(onValue(ref(db, 'transactions'), (snapshot) => {
         state.transactions = snapshot.val() || {};
         renderApp();
         if (state.selectedPaymentUserId) {
             renderModalPlayerTransactions();
         }
-    });
+    }));
 
-    onValue(ref(db, 'treasury'), (snapshot) => {
+    firebaseUnsubscribers.push(onValue(ref(db, 'treasury'), (snapshot) => {
         const val = snapshot.val();
         state.treasury = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
         renderApp();
-    });
+    }));
 }
 
 function bindEvents() {
@@ -83,6 +96,9 @@ function bindEvents() {
     document.getElementById('open-match-mode-btn').addEventListener('click', () => openMatchMode());
     document.getElementById('close-match-mode-btn').addEventListener('click', closeMatchMode);
     document.getElementById('toggle-swap-mode-btn').addEventListener('click', toggleSwapMode);
+    document.getElementById('cancel-match-session-btn').addEventListener('click', openCancelMatchModal);
+    document.getElementById('close-cancel-match-modal-btn').addEventListener('click', closeCancelMatchModal);
+    document.getElementById('confirm-cancel-match-btn').addEventListener('click', confirmCancelMatchSession);
     document.getElementById('add-general-sub-btn').addEventListener('click', addGeneralSubstitute);
     document.getElementById('add-player-btn').addEventListener('click', openAddPlayerModal);
     document.getElementById('close-add-player-modal-btn').addEventListener('click', closeAddPlayerModal);
@@ -225,7 +241,10 @@ async function handleLogin(e) {
 
     if (!matchedUser && window.FB) {
         try {
-            const { db, ref, get } = window.FB;
+            const { db, ref, get, auth } = window.FB;
+            if (auth && auth.authStateReady) {
+                await auth.authStateReady();
+            }
             const snapshot = await get(ref(db, 'users'));
             if (snapshot.exists()) {
                 const rawUsers = snapshot.val() || {};
@@ -248,7 +267,7 @@ async function handleLogin(e) {
             return;
         }
         state.currentUser = matchedUser;
-        state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes';
+        state.isAdmin = state.currentUser.admin === true || state.currentUser.admin === 'yes' || state.currentUser.username === 'juhatti';
         saveSession();
     } else {
         showToast('Nem található ilyen felhasználónév!');
@@ -406,20 +425,29 @@ function saveEditedEmail(e) {
 function handleSliderClick(e) {
     const state = window.AppState;
     if (!state.currentUser) return;
+    const uid = String(state.currentUser.id);
+    if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
+    const currentAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
+    const isResolved = currentAtt.status === 'yes' || currentAtt.status === 'no';
+
     const option = e.target.closest('.tri-slider-option');
     let nextStatus;
-    if (option && option.dataset.status) {
+    if (option && option.dataset.status && !option.classList.contains('hidden')) {
         nextStatus = option.dataset.status;
     } else {
         const rect = e.currentTarget.getBoundingClientRect();
         const relX = e.clientX - rect.left;
-        if (relX < rect.width / 3) nextStatus = 'no';
-        else if (relX < (rect.width * 2) / 3) nextStatus = 'maybe';
-        else nextStatus = 'yes';
+        if (isResolved) {
+            nextStatus = relX < rect.width / 2 ? 'no' : 'yes';
+        } else {
+            if (relX < rect.width / 3) nextStatus = 'no';
+            else if (relX < (rect.width * 2) / 3) nextStatus = 'maybe';
+            else nextStatus = 'yes';
+        }
     }
-    const uid = String(state.currentUser.id);
-    if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
-    const currentAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
+
+    if (isResolved && nextStatus === 'maybe') return;
+
     if (currentAtt.status !== nextStatus) {
         updateAttendanceDB(uid, nextStatus, currentAtt.note);
     }
@@ -601,11 +629,22 @@ function renderNextMatchCard() {
     if (!state.currentUser) return;
     const uid = String(state.currentUser.id);
     const myAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
+    const sliderContainer = document.getElementById('tri-slider');
+    const maybeOption = document.getElementById('slider-option-maybe');
     const thumb = document.getElementById('slider-thumb');
     thumb.className = 'tri-slider-thumb';
+
+    const isResolved = myAtt.status === 'no' || myAtt.status === 'yes';
+    if (sliderContainer) {
+        sliderContainer.classList.toggle('resolved', isResolved);
+    }
+    if (maybeOption) {
+        maybeOption.classList.toggle('hidden', isResolved);
+    }
+
     if (myAtt.status === 'no') thumb.classList.add('pos-left');
-    else if (myAtt.status === 'maybe') thumb.classList.add('pos-mid');
     else if (myAtt.status === 'yes') thumb.classList.add('pos-right');
+    else thumb.classList.add('pos-mid');
 
     document.getElementById('user-note').value = myAtt.note || '';
 }
@@ -1211,6 +1250,10 @@ function openMatchMode(matchIndex = null) {
 
     document.getElementById('match-mode-section').classList.remove('hidden');
     document.getElementById('match-mode-date-label').innerText = `Dátum: ${matchIndex !== null ? state.matches[matchIndex].date : state.nextMatch.date}`;
+    const cancelSessionBtn = document.getElementById('cancel-match-session-btn');
+    if (cancelSessionBtn) {
+        cancelSessionBtn.classList.toggle('hidden', matchIndex !== null);
+    }
 
     const teamAContainer = document.getElementById('team-a-players');
     const teamBContainer = document.getElementById('team-b-players');
@@ -1472,6 +1515,42 @@ function closeMatchMode() {
     document.getElementById('match-mode-section').classList.add('hidden');
     window.AppState.editingMatchIndex = null;
     window.AppState.isSwapModeActive = false;
+}
+
+function openCancelMatchModal() {
+    const state = window.AppState;
+    if (!state.isAdmin || state.editingMatchIndex !== null) return;
+    const dateLabel = document.getElementById('cancel-match-modal-date');
+    if (dateLabel) dateLabel.innerText = state.nextMatch.date || '';
+    document.getElementById('cancel-match-modal').classList.remove('hidden');
+}
+
+function closeCancelMatchModal() {
+    document.getElementById('cancel-match-modal').classList.add('hidden');
+}
+
+function confirmCancelMatchSession() {
+    const state = window.AppState;
+    if (!state.isAdmin || state.editingMatchIndex !== null) return;
+
+    const dp = (state.nextMatch.date || '').replace(/\./g, '').trim().split(/\s+/);
+    if (dp.length === 3) {
+        const d = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10));
+        d.setDate(d.getDate() + 7);
+        state.nextMatch.date = `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getDate()).padStart(2, '0')}.`;
+    }
+    state.nextMatch.attendances = {};
+
+    if (window.FB) {
+        const { db, ref, set } = window.FB;
+        set(ref(db, 'nextMatch'), state.nextMatch);
+    }
+
+    closeCancelMatchModal();
+    closeMatchMode();
+    renderNextMatchCard();
+    renderAttendeesList();
+    showToast('Meccs alkalom törölve, dátum léptetve a következő hétre.');
 }
 
 function saveMatchResults() {
