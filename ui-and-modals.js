@@ -61,6 +61,9 @@ window.initFirebaseListeners = function initFirebaseListeners(forceRestart = fal
             if (!state.nextMatch.location) state.nextMatch.location = "ELTE Sport Kft Bogdánfy úti sporttelep";
         }
         renderApp();
+        if (!document.getElementById('add-player-modal').classList.contains('hidden')) {
+            renderAddPlayerModalList();
+        }
     }));
 
     firebaseUnsubscribers.push(onValue(ref(db, 'matches'), (snapshot) => {
@@ -84,6 +87,21 @@ window.initFirebaseListeners = function initFirebaseListeners(forceRestart = fal
     }));
 }
 
+let confirmModalCallback = null;
+
+function openConfirmModal(title, message, onConfirm) {
+    const modal = document.getElementById('confirm-modal');
+    document.getElementById('confirm-modal-title').innerText = title || 'Megerősítés';
+    document.getElementById('confirm-modal-message').innerText = message || 'Biztosan törölni szeretnéd?';
+    confirmModalCallback = onConfirm;
+    modal.classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+    confirmModalCallback = null;
+}
+
 function bindEvents() {
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('register-form').addEventListener('submit', handleRegister);
@@ -99,7 +117,9 @@ function bindEvents() {
     document.getElementById('cancel-match-session-btn').addEventListener('click', openCancelMatchModal);
     document.getElementById('close-cancel-match-modal-btn').addEventListener('click', closeCancelMatchModal);
     document.getElementById('confirm-cancel-match-btn').addEventListener('click', confirmCancelMatchSession);
-    document.getElementById('add-general-sub-btn').addEventListener('click', addGeneralSubstitute);
+    document.getElementById('add-general-sub-btn').addEventListener('click', openAddSubModal);
+    document.getElementById('close-add-sub-modal-btn').addEventListener('click', closeAddSubModal);
+    document.getElementById('add-sub-form').addEventListener('submit', handleAddSubSubmit);
     document.getElementById('add-player-btn').addEventListener('click', openAddPlayerModal);
     document.getElementById('close-add-player-modal-btn').addEventListener('click', closeAddPlayerModal);
     document.getElementById('save-match-results-btn').addEventListener('click', saveMatchResults);
@@ -109,6 +129,17 @@ function bindEvents() {
     document.getElementById('save-date-modal-btn').addEventListener('click', saveNextMatchDateModal);
     document.getElementById('calendar-export-btn').addEventListener('click', exportToGoogleCalendar);
     document.getElementById('export-finances-btn').addEventListener('click', exportFinancesList);
+    document.getElementById('close-export-modal-btn').addEventListener('click', () => {
+        document.getElementById('export-modal').classList.add('hidden');
+    });
+
+    // Generic confirmation modal events
+    document.getElementById('confirm-modal-cancel-btn').addEventListener('click', closeConfirmModal);
+    document.getElementById('confirm-modal-ok-btn').addEventListener('click', () => {
+        const cb = confirmModalCallback;
+        closeConfirmModal();
+        if (typeof cb === 'function') cb();
+    });
 
     // Navigation tabs
     document.getElementById('nav-tab-matches').addEventListener('click', () => switchTab('matches'));
@@ -466,7 +497,21 @@ async function updateAttendanceDB(userId, status, note) {
     const uid = String(userId);
     const userData = state.users[uid] || state.currentUser;
     if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
-    const payload = { id: uid, status, note: note || '', name: userData.name };
+    const existing = state.nextMatch.attendances[uid];
+    const order = existing && typeof existing.order === 'number'
+        ? existing.order
+        : getNextAttendanceOrder();
+
+    const payload = {
+        id: uid,
+        status,
+        note: note || '',
+        name: userData.name,
+        order
+    };
+    if (existing && existing.isSubstitute) {
+        payload.isSubstitute = true;
+    }
 
     // Optimistic UI update so the slider moves immediately
     state.nextMatch.attendances[uid] = payload;
@@ -485,13 +530,47 @@ async function updateAttendanceDB(userId, status, note) {
     document.getElementById('attendance-msg').classList.remove('opacity-0');
 }
 
+function getNextAttendanceOrder() {
+    const attendances = window.AppState.nextMatch.attendances || {};
+    let maxOrder = 0;
+    Object.values(attendances).forEach(att => {
+        if (typeof att.order === 'number' && att.order > maxOrder) {
+            maxOrder = att.order;
+        }
+    });
+    return Math.max(Date.now(), maxOrder + 1);
+}
+
 function setUserStatusAdmin(userId, statusVal) {
     const state = window.AppState;
     if (!state.isAdmin) return;
     const uid = String(userId);
     const att = state.nextMatch.attendances[uid] || { note: '', name: state.users[uid]?.name || uid };
+    const order = typeof att.order === 'number' ? att.order : getNextAttendanceOrder();
+    const payload = { id: uid, status: statusVal, note: att.note || '', name: att.name, order };
+    if (att.isSubstitute) payload.isSubstitute = true;
     const { db, ref, set } = window.FB;
-    set(ref(db, `nextMatch/attendances/${uid}`), { id: uid, status: statusVal, note: att.note, name: att.name });
+    set(ref(db, `nextMatch/attendances/${uid}`), payload);
+}
+
+function removeAttendanceAdmin(userId) {
+    const state = window.AppState;
+    if (!state.isAdmin) return;
+    const uid = String(userId);
+    const att = state.nextMatch.attendances[uid];
+    if (!att) return;
+    const displayName = state.users[uid]?.name || att.name || uid;
+    const label = att.isSubstitute ? 'beugrót' : 'jelentkezést';
+
+    openConfirmModal(
+        'Jelentkezés törlése',
+        `Biztosan törlöd ${displayName} (${label}) a listáról?`,
+        () => {
+            const { db, ref, set } = window.FB;
+            set(ref(db, `nextMatch/attendances/${uid}`), null);
+            showToast(`${displayName} törölve a listáról.`);
+        }
+    );
 }
 
 function renderApp() {
@@ -579,8 +658,8 @@ function renderPendingUsers() {
                 <button type="button" class="btn-approve-user px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition shadow-2xs">
                     <i class="fa-solid fa-check mr-1"></i> Jóváhagyás
                 </button>
-                <button type="button" class="btn-reject-user px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-lg transition border border-red-200">
-                    <i class="fa-solid fa-trash mr-1"></i> Törlés
+                <button type="button" class="btn-reject-user w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition border border-red-200" title="Törlés">
+                    <i class="fa-solid fa-trash text-xs"></i>
                 </button>
             </div>
         `;
@@ -602,10 +681,15 @@ function rejectPendingUser(uid) {
     const state = window.AppState;
     if (!state.isAdmin || !state.users[uid]) return;
     const userName = state.users[uid].name;
-    if (!confirm(`Biztosan törlöd ${userName} regisztrációját?`)) return;
-    const { db, ref, set } = window.FB;
-    set(ref(db, `users/${uid}`), null);
-    showToast(`${userName} regisztrációja törölve.`);
+    openConfirmModal(
+        'Regisztráció törlése',
+        `Biztosan törlöd ${userName} regisztrációját?`,
+        () => {
+            const { db, ref, set } = window.FB;
+            set(ref(db, `users/${uid}`), null);
+            showToast(`${userName} regisztrációja törölve.`);
+        }
+    );
 }
 
 function renderNextMatchCard() {
@@ -666,13 +750,28 @@ function exportToGoogleCalendar() {
     window.open(url, '_blank');
 }
 
+function getSortedAttendanceEntries() {
+    const state = window.AppState;
+    const rawEntries = Object.entries(state.nextMatch.attendances || {});
+    return rawEntries.sort(([uidA, attA], [uidB, attB]) => {
+        const orderA = typeof attA.order === 'number'
+            ? attA.order
+            : (String(uidA).startsWith('sub_') ? parseInt(String(uidA).replace('sub_', ''), 10) || Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER);
+        const orderB = typeof attB.order === 'number'
+            ? attB.order
+            : (String(uidB).startsWith('sub_') ? parseInt(String(uidB).replace('sub_', ''), 10) || Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER);
+        if (orderA !== orderB) return orderA - orderB;
+        return 0;
+    });
+}
+
 function renderAttendeesList() {
     const state = window.AppState;
     const container = document.getElementById('attendees-list');
     container.innerHTML = '';
 
     let yesCount = 0;
-    const entries = Object.entries(state.nextMatch.attendances || {});
+    const entries = getSortedAttendanceEntries();
 
     entries.forEach(([uid, att], idx) => {
         if (att.status === 'yes') yesCount++;
@@ -683,6 +782,10 @@ function renderAttendeesList() {
         let iconHtml = att.status === 'yes' ? `<span class="text-emerald-500 bg-emerald-50 p-1.5 rounded-lg"><i class="fa-solid fa-square-check"></i></span>` :
                        att.status === 'no' ? `<span class="text-red-500 bg-red-50 p-1.5 rounded-lg"><i class="fa-solid fa-square-xmark"></i></span>` :
                        `<span class="text-amber-500 bg-amber-50 p-1.5 rounded-lg"><i class="fa-solid fa-circle-question"></i></span>`;
+
+        const deleteBtnHtml = state.isAdmin
+            ? `<button type="button" class="btn-del-att w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition border border-red-200/80" title="Jelentkezés törlése"><i class="fa-solid fa-trash text-[11px]"></i></button>`
+            : '';
 
         const row = document.createElement('div');
         row.className = 'py-3 flex items-center justify-between text-sm hover:bg-gray-50/50 px-2 rounded-xl transition';
@@ -699,11 +802,10 @@ function renderAttendeesList() {
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                    ${state.isAdmin ? `<button class="btn-del-sub text-xs px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 font-semibold rounded-lg transition"><i class="fa-solid fa-trash mr-1"></i> Törlés</button>` : ''}
+                    ${deleteBtnHtml}
                     ${iconHtml}
                 </div>
             `;
-            if (state.isAdmin) row.querySelector('.btn-del-sub').addEventListener('click', () => removeGeneralSubstitute(uid));
         } else {
             row.innerHTML = `
                 <div class="flex items-center space-x-3">
@@ -715,9 +817,10 @@ function renderAttendeesList() {
                 </div>
                 <div class="flex items-center space-x-2">
                     ${state.isAdmin ? `
-                        <button class="btn-att-yes text-xs px-2 py-1 rounded ${att.status === 'yes' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500'}">✓</button>
-                        <button class="btn-att-no text-xs px-2 py-1 rounded ${att.status === 'no' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500'}">✕</button>
+                        <button type="button" class="btn-att-yes text-xs px-2 py-1 rounded ${att.status === 'yes' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500'}">✓</button>
+                        <button type="button" class="btn-att-no text-xs px-2 py-1 rounded ${att.status === 'no' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500'}">✕</button>
                     ` : ''}
+                    ${deleteBtnHtml}
                     ${iconHtml}
                 </div>
             `;
@@ -726,6 +829,14 @@ function renderAttendeesList() {
                 row.querySelector('.btn-att-no').addEventListener('click', () => setUserStatusAdmin(uid, 'no'));
             }
         }
+
+        if (state.isAdmin) {
+            const delBtn = row.querySelector('.btn-del-att');
+            if (delBtn) {
+                delBtn.addEventListener('click', () => removeAttendanceAdmin(uid));
+            }
+        }
+
         container.appendChild(row);
     });
 
@@ -734,22 +845,46 @@ function renderAttendeesList() {
     badgeContainer.className = `border rounded-xl px-6 py-2 text-center transition-colors ${yesCount < 8 ? 'bg-red-50 border-red-100 text-red-700' : yesCount <= 9 ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'}`;
 }
 
-function addGeneralSubstitute() {
-    const subName = prompt('Add meg a beugró nevét:', 'Beugró Játékos');
-    if (!subName || !subName.trim()) return;
+function openAddSubModal() {
+    if (!window.AppState.isAdmin) return;
+    const input = document.getElementById('add-sub-name-input');
+    input.value = 'Beugró Játékos';
+    document.getElementById('add-sub-modal').classList.remove('hidden');
+    input.focus();
+    input.select();
+}
+
+function closeAddSubModal() {
+    document.getElementById('add-sub-modal').classList.add('hidden');
+}
+
+function handleAddSubSubmit(e) {
+    e.preventDefault();
+    if (!window.AppState.isAdmin) return;
+    const input = document.getElementById('add-sub-name-input');
+    const subName = input.value.trim();
+    if (!subName) return;
     const subKey = 'sub_' + Date.now();
+    const order = getNextAttendanceOrder();
     const { db, ref, set } = window.FB;
-    set(ref(db, `nextMatch/attendances/${subKey}`), { id: subKey, status: 'yes', note: '', name: subName.trim(), isSubstitute: true });
+    set(ref(db, `nextMatch/attendances/${subKey}`), {
+        id: subKey,
+        status: 'yes',
+        note: '',
+        name: subName,
+        isSubstitute: true,
+        order
+    });
+    closeAddSubModal();
     showToast('Beugró hozzáadva!');
 }
 
-function openAddPlayerModal() {
+function renderAddPlayerModalList() {
     const state = window.AppState;
-    if (!state.isAdmin) return;
-    
     const container = document.getElementById('add-player-modal-list');
+    if (!container) return;
     container.innerHTML = '';
-    
+
     const currentAttendees = state.nextMatch.attendances || {};
     const unlistedUsers = Object.values(state.users).filter(u => u.pending !== true && !currentAttendees[String(u.id)]);
 
@@ -762,30 +897,34 @@ function openAddPlayerModal() {
             div.className = 'flex justify-between items-center bg-gray-50 p-2 rounded-xl text-xs hover:bg-emerald-50 transition border border-gray-100';
             div.innerHTML = `
                 <span class="font-semibold text-gray-800">${u.name} <span class="text-gray-400 font-normal">(#${uid})</span></span>
-                <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-2xs">Hozzáadás</button>
+                <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-2xs transition">Hozzáadás</button>
             `;
             div.querySelector('button').addEventListener('click', () => {
+                const order = getNextAttendanceOrder();
+                const payload = { id: uid, status: 'yes', note: '', name: u.name, order };
+                if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
+                state.nextMatch.attendances[uid] = payload;
+
                 const { db, ref, set } = window.FB;
-                set(ref(db, `nextMatch/attendances/${uid}`), { id: uid, status: 'yes', note: '', name: u.name });
+                set(ref(db, `nextMatch/attendances/${uid}`), payload);
                 showToast(`${u.name} hozzáadva a meccshez!`);
-                closeAddPlayerModal();
+                renderAttendeesList();
+                renderAddPlayerModalList();
             });
             container.appendChild(div);
         });
     }
+}
 
+function openAddPlayerModal() {
+    const state = window.AppState;
+    if (!state.isAdmin) return;
+    renderAddPlayerModalList();
     document.getElementById('add-player-modal').classList.remove('hidden');
 }
 
 function closeAddPlayerModal() {
     document.getElementById('add-player-modal').classList.add('hidden');
-}
-
-function removeGeneralSubstitute(subKey) {
-    if (!confirm('Biztosan törlöd ezt a beugrót?')) return;
-    const { db, ref, set } = window.FB;
-    set(ref(db, `nextMatch/attendances/${subKey}`), null);
-    showToast('Beugró törölve.');
 }
 
 function renderLastMatches() {
@@ -1053,7 +1192,8 @@ function exportFinancesList() {
     navigator.clipboard.writeText(text).then(() => {
         showToast('Pénzügyi lista a vágólapra másolva!');
     }).catch(() => {
-        alert(text);
+        document.getElementById('export-modal-text').value = text;
+        document.getElementById('export-modal').classList.remove('hidden');
     });
 }
 
@@ -1116,7 +1256,7 @@ function renderModalPlayerTransactions() {
             </div>
             <div class="flex items-center space-x-1.5 shrink-0">
                 <span class="font-bold ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>
-                <button type="button" class="text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded bg-red-50 font-bold" title="Tranzakció törlése">
+                <button type="button" class="w-6 h-6 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition border border-red-200/80" title="Tranzakció törlése">
                     <i class="fa-solid fa-trash text-[10px]"></i>
                 </button>
             </div>
@@ -1128,13 +1268,18 @@ function renderModalPlayerTransactions() {
 
 function deletePlayerTransaction(idx) {
     const state = window.AppState;
-    if (!confirm('Biztosan törlöd ezt a tranzakciót?')) return;
-    const userTrans = state.transactions[state.selectedPaymentUserId] || [];
-    userTrans.splice(idx, 1);
-    const { db, ref, set } = window.FB;
-    set(ref(db, `transactions/${state.selectedPaymentUserId}`), userTrans);
-    renderModalPlayerTransactions();
-    showToast('Tranzakció törölve.');
+    openConfirmModal(
+        'Tranzakció törlése',
+        'Biztosan törlöd ezt a tranzakciót?',
+        () => {
+            const userTrans = state.transactions[state.selectedPaymentUserId] || [];
+            userTrans.splice(idx, 1);
+            const { db, ref, set } = window.FB;
+            set(ref(db, `transactions/${state.selectedPaymentUserId}`), userTrans);
+            renderModalPlayerTransactions();
+            showToast('Tranzakció törölve.');
+        }
+    );
 }
 
 function closePaymentModal() {
@@ -1184,14 +1329,28 @@ function renderModalTreasuryTransactions() {
         const origIdx = window.AppState.treasury.indexOf(t);
         const isPos = t.amount >= 0;
         const div = document.createElement('div');
-        div.className = 'flex justify-between items-center bg-gray-50 p-1.5 rounded text-[11px]';
-        div.innerHTML = `<div><span class="text-gray-500">${t.date} (${t.note || 'Mozgás'})</span><span class="font-bold ml-1 ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span></div><button type="button" class="text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded bg-red-50 font-bold"><i class="fa-solid fa-trash text-[10px]"></i></button>`;
+        div.className = 'flex justify-between items-center bg-gray-50 p-1.5 rounded text-[11px] border border-gray-100';
+        div.innerHTML = `
+            <div>
+                <span class="text-gray-500">${t.date} (${t.note || 'Mozgás'})</span>
+                <span class="font-bold ml-1 ${isPos ? 'text-emerald-600' : 'text-red-600'}">${isPos ? '+' : ''}${parseInt(t.amount).toLocaleString()} Ft</span>
+            </div>
+            <button type="button" class="w-6 h-6 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition border border-red-200/80" title="Kasszamozgás törlése">
+                <i class="fa-solid fa-trash text-[10px]"></i>
+            </button>
+        `;
         div.querySelector('button').addEventListener('click', () => {
-            window.AppState.treasury.splice(origIdx, 1);
-            const { db, ref, set } = window.FB;
-            set(ref(db, 'treasury'), window.AppState.treasury);
-            renderModalTreasuryTransactions();
-            showToast('Kassza mozgás törölve.');
+            openConfirmModal(
+                'Kasszamozgás törlése',
+                'Biztosan törlöd ezt a kasszamozgást?',
+                () => {
+                    window.AppState.treasury.splice(origIdx, 1);
+                    const { db, ref, set } = window.FB;
+                    set(ref(db, 'treasury'), window.AppState.treasury);
+                    renderModalTreasuryTransactions();
+                    showToast('Kassza mozgás törölve.');
+                }
+            );
         });
         container.appendChild(div);
     });
@@ -1248,7 +1407,8 @@ function openMatchMode(matchIndex = null) {
     const swapToggleBtn = document.getElementById('toggle-swap-mode-btn');
     swapToggleBtn.className = 'px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition flex items-center space-x-1.5 border border-gray-200';
 
-    document.getElementById('match-mode-section').classList.remove('hidden');
+    const matchModeSection = document.getElementById('match-mode-section');
+    matchModeSection.classList.remove('hidden');
     document.getElementById('match-mode-date-label').innerText = `Dátum: ${matchIndex !== null ? state.matches[matchIndex].date : state.nextMatch.date}`;
     const cancelSessionBtn = document.getElementById('cancel-match-session-btn');
     if (cancelSessionBtn) {
@@ -1283,7 +1443,7 @@ function openMatchMode(matchIndex = null) {
             else starterList.push(entry);
         });
     } else {
-        starterList = Object.entries(state.nextMatch.attendances || {})
+        starterList = getSortedAttendanceEntries()
             .filter(([_, d]) => d.status === 'yes')
             .map(([uid, d], idx) => ({ id: String(uid), name: state.users[uid]?.name || d.name, team: idx % 2 === 0 ? 'A' : 'B', goals: 0, isSubstitute: d.isSubstitute === true, isSwapped: false }));
     }
@@ -1316,6 +1476,11 @@ function openMatchMode(matchIndex = null) {
 
     updateSwapButtonsVisibility();
     updateMatchScores();
+
+    // Smoothly scroll up to the match-mode section
+    requestAnimationFrame(() => {
+        matchModeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 }
 
 function toggleSwapMode() {
