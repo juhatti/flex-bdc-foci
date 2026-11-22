@@ -56,6 +56,8 @@ window.initFirebaseListeners = function initFirebaseListeners(forceRestart = fal
         if (val) {
             state.nextMatch = val;
             if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
+    state.nextMatch.reminderSentForDate = '';
+    state.nextMatch.sendReminderNow = false;
             if (!state.nextMatch.courtFee) state.nextMatch.courtFee = 18000;
             if (!state.nextMatch.feePerPerson) state.nextMatch.feePerPerson = 1000;
             if (!state.nextMatch.location) state.nextMatch.location = "ELTE Sport Kft Bogdánfy úti sporttelep";
@@ -127,6 +129,7 @@ function bindEvents() {
     document.getElementById('next-match-btn').addEventListener('click', nextMatchPage);
     document.getElementById('close-date-modal-btn').addEventListener('click', closeEditMatchDateModal);
     document.getElementById('save-date-modal-btn').addEventListener('click', saveNextMatchDateModal);
+    document.getElementById('send-reminder-now-btn').addEventListener('click', triggerReminderNow);
     document.getElementById('calendar-export-btn').addEventListener('click', exportToGoogleCalendar);
     document.getElementById('export-finances-btn').addEventListener('click', exportFinancesList);
     document.getElementById('close-export-modal-btn').addEventListener('click', () => {
@@ -458,6 +461,8 @@ function handleSliderClick(e) {
     if (!state.currentUser) return;
     const uid = String(state.currentUser.id);
     if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
+    state.nextMatch.reminderSentForDate = '';
+    state.nextMatch.sendReminderNow = false;
     const currentAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
     const isResolved = currentAtt.status === 'yes' || currentAtt.status === 'no';
 
@@ -497,6 +502,8 @@ async function updateAttendanceDB(userId, status, note) {
     const uid = String(userId);
     const userData = state.users[uid] || state.currentUser;
     if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
+    state.nextMatch.reminderSentForDate = '';
+    state.nextMatch.sendReminderNow = false;
     const existing = state.nextMatch.attendances[uid];
     const order = existing && typeof existing.order === 'number'
         ? existing.order
@@ -903,6 +910,8 @@ function renderAddPlayerModalList() {
                 const order = getNextAttendanceOrder();
                 const payload = { id: uid, status: 'yes', note: '', name: u.name, order };
                 if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
+    state.nextMatch.reminderSentForDate = '';
+    state.nextMatch.sendReminderNow = false;
                 state.nextMatch.attendances[uid] = payload;
 
                 const { db, ref, set } = window.FB;
@@ -1376,14 +1385,37 @@ function saveTreasuryTransaction() {
 }
 
 function openEditMatchDateModal() {
-    document.getElementById('modal-match-fee').value = window.AppState.nextMatch.courtFee || 18000;
-    document.getElementById('modal-match-fee-person').value = window.AppState.nextMatch.feePerPerson || 1000;
-    document.getElementById('modal-match-location').value = window.AppState.nextMatch.location || "ELTE Sport Kft Bogdánfy úti sporttelep";
+    const next = window.AppState.nextMatch;
+    const dp = (next.date || '').replace(/\./g, '').trim().split(/\s+/);
+    if (dp.length === 3) {
+        document.getElementById('modal-match-date').value = `${dp[0]}-${dp[1].padStart(2, '0')}-${dp[2].padStart(2, '0')}`;
+    }
+    document.getElementById('modal-match-start').value = next.startTime || '09:00';
+    document.getElementById('modal-match-end').value = next.endTime || '10:00';
+    document.getElementById('modal-match-fee').value = next.courtFee || 18000;
+    document.getElementById('modal-match-fee-person').value = next.feePerPerson || 1000;
+    document.getElementById('modal-match-location').value = next.location || "ELTE Sport Kft Bogdánfy úti sporttelep";
+
+    const reminderEnabled = next.reminderEnabled !== false;
+    const reminderDays = parseInt(next.reminderDaysBefore, 10) || 5;
+    document.getElementById('modal-match-reminder-enabled').checked = reminderEnabled;
+    document.getElementById('modal-match-reminder-days').value = reminderDays;
+
+    const statusEl = document.getElementById('modal-reminder-status-text');
+    if (next.sendReminderNow) {
+        statusEl.innerText = 'Küldés folyamatban (Apps Script várólistán)...';
+    } else if (next.reminderSentForDate && next.reminderSentForDate === next.date) {
+        statusEl.innerText = 'Elküldve erre a meccsre ✓';
+    } else {
+        statusEl.innerText = 'Még nincs elküldve erre a meccsre';
+    }
+
     document.getElementById('edit-date-modal').classList.remove('hidden');
 }
 function closeEditMatchDateModal() { document.getElementById('edit-date-modal').classList.add('hidden'); }
 function saveNextMatchDateModal() {
     const next = window.AppState.nextMatch;
+    const prevDate = next.date;
     const dateVal = document.getElementById('modal-match-date').value;
     if (dateVal) next.date = dateVal.replace(/-/g, '. ') + '.';
     next.startTime = document.getElementById('modal-match-start').value || next.startTime;
@@ -1391,11 +1423,31 @@ function saveNextMatchDateModal() {
     next.location = document.getElementById('modal-match-location').value.trim() || "ELTE Sport Kft Bogdánfy úti sporttelep";
     next.courtFee = parseInt(document.getElementById('modal-match-fee').value) || 18000;
     next.feePerPerson = parseInt(document.getElementById('modal-match-fee-person').value) || 1000;
+    next.reminderEnabled = document.getElementById('modal-match-reminder-enabled').checked;
+    next.reminderDaysBefore = Math.max(1, Math.min(14, parseInt(document.getElementById('modal-match-reminder-days').value, 10) || 5));
+
+    if (prevDate !== next.date) {
+        next.reminderSentForDate = '';
+        next.sendReminderNow = false;
+    }
 
     const { db, ref, set } = window.FB;
     set(ref(db, 'nextMatch'), next);
     closeEditMatchDateModal();
     showToast('Beállítások frissítve!');
+}
+function triggerReminderNow() {
+    const state = window.AppState;
+    if (!state.isAdmin) return;
+    const next = state.nextMatch;
+    next.reminderEnabled = document.getElementById('modal-match-reminder-enabled').checked;
+    next.reminderDaysBefore = Math.max(1, Math.min(14, parseInt(document.getElementById('modal-match-reminder-days').value, 10) || 5));
+    next.sendReminderNow = true;
+
+    const { db, ref, set } = window.FB;
+    set(ref(db, 'nextMatch'), next);
+    document.getElementById('modal-reminder-status-text').innerText = 'Küldés folyamatban (Apps Script várólistán)...';
+    showToast('Emlékeztető küldése beütemezve!');
 }
 
 function openMatchMode(matchIndex = null) {
@@ -1705,6 +1757,8 @@ function confirmCancelMatchSession() {
         state.nextMatch.date = `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getDate()).padStart(2, '0')}.`;
     }
     state.nextMatch.attendances = {};
+    state.nextMatch.reminderSentForDate = '';
+    state.nextMatch.sendReminderNow = false;
 
     if (window.FB) {
         const { db, ref, set } = window.FB;
@@ -1823,6 +1877,8 @@ function saveMatchResults() {
             d.setDate(d.getDate() + 7);
             state.nextMatch.date = `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getDate()).padStart(2, '0')}.`;
             state.nextMatch.attendances = {};
+    state.nextMatch.reminderSentForDate = '';
+    state.nextMatch.sendReminderNow = false;
             set(ref(db, 'nextMatch'), state.nextMatch);
         }
     }

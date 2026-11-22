@@ -9,7 +9,11 @@ window.AppState = {
         endTime: "10:00", 
         location: "ELTE Sport Kft Bogdánfy úti sporttelep",
         courtFee: 18000, 
-        feePerPerson: 1000, 
+        feePerPerson: 1000,
+        reminderEnabled: true,
+        reminderDaysBefore: 5,
+        reminderSentForDate: "",
+        sendReminderNow: false,
         attendances: {} 
     },
     matches: [],
