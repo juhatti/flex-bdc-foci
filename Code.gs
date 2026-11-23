@@ -10,7 +10,7 @@
  */
 
 const FIREBASE_DB_URL = 'https://flex-bdc-foci-default-rtdb.europe-west1.firebasedatabase.app';
-const FIREBASE_AUTH_SECRET = 'AUTH_SECRET_GOES_HERE';
+const FIREBASE_AUTH_SECRET = 'AUTH_SECRET';
 const APP_URL = 'https://juhatti.github.io/flex-bdc-foci/';
 const LOGO_URL = 'https://juhatti.github.io/flex-bdc-foci/flex-bdc-logo.png';
 const CC_EMAIL = 'juhatti@gmail.com';
@@ -191,7 +191,6 @@ function buildReminderHtmlEmail(nextMatch) {
   const startTime = nextMatch.startTime || '09:00';
   const endTime = nextMatch.endTime || '10:00';
   const location = nextMatch.location || 'ELTE Sport Kft Bogdánfy úti sporttelep';
-  const courtFee = (parseInt(nextMatch.courtFee, 10) || 18000).toLocaleString('en-US');
   const feePerPerson = (parseInt(nextMatch.feePerPerson, 10) || 1000).toLocaleString('en-US');
   const calendarUrl = buildGoogleCalendarUrl(nextMatch);
 
@@ -228,16 +227,14 @@ function buildReminderHtmlEmail(nextMatch) {
               </h1>
 
               <p style="margin:4px 0 4px 0; font-size:12px; color:#6b7280; line-height:1.4;">
-                <span style="color:#059669; font-weight:700; margin-right:3px;">&#9679;</span><span>${location}</span>
+                <span style="color:#059669; font-weight:700; margin-right:3px;">⚲</span><span>${location}</span>
               </p>
 
               <p style="margin:4px 0 24px 0; font-size:12px; color:#9ca3af; line-height:1.4;">
-                <span>${courtFee} Ft</span>
+                <span>ጸ ${feePerPerson} Ft / f&#337;</span>
                 <span style="margin:0 4px;">&bull;</span>
-                <span>${feePerPerson} Ft / f&#337;</span>
-                <span style="margin:0 4px;">&bull;</span>
-                <a href="${calendarUrl}" target="_blank" style="color:#6b7280; text-decoration:underline; font-size:12px; font-weight:500;" title="Google Naptár esemény létrehozása">
-                  Naptár
+                <a href="${calendarUrl}" target="_blank" style="color:#6b7280; text-decoration:none; font-size:12px; font-weight:500;" title="Google Naptár esemény létrehozása">
+                  𝄜
                 </a>
               </p>
 
@@ -281,7 +278,6 @@ function buildReminderPlainEmail(nextMatch) {
   const startTime = nextMatch.startTime || '09:00';
   const endTime = nextMatch.endTime || '10:00';
   const location = nextMatch.location || 'ELTE Sport Kft Bogdánfy úti sporttelep';
-  const courtFee = (parseInt(nextMatch.courtFee, 10) || 18000).toLocaleString('en-US');
   const feePerPerson = (parseInt(nextMatch.feePerPerson, 10) || 1000).toLocaleString('en-US');
   const calendarUrl = buildGoogleCalendarUrl(nextMatch);
 
@@ -290,7 +286,7 @@ function buildReminderPlainEmail(nextMatch) {
     '',
     `${dateStr} ${startTime} - ${endTime}`,
     `${location}`,
-    `${courtFee} Ft • ${feePerPerson} Ft / fő`,
+    `${feePerPerson} Ft / fő`,
     '',
     `Jelentkezés: ${APP_URL}`,
     `Google Naptár: ${calendarUrl}`

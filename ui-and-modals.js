@@ -56,8 +56,6 @@ window.initFirebaseListeners = function initFirebaseListeners(forceRestart = fal
         if (val) {
             state.nextMatch = val;
             if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
-    state.nextMatch.reminderSentForDate = '';
-    state.nextMatch.sendReminderNow = false;
             if (!state.nextMatch.courtFee) state.nextMatch.courtFee = 18000;
             if (!state.nextMatch.feePerPerson) state.nextMatch.feePerPerson = 1000;
             if (!state.nextMatch.location) state.nextMatch.location = "ELTE Sport Kft Bogdánfy úti sporttelep";
@@ -461,8 +459,6 @@ function handleSliderClick(e) {
     if (!state.currentUser) return;
     const uid = String(state.currentUser.id);
     if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
-    state.nextMatch.reminderSentForDate = '';
-    state.nextMatch.sendReminderNow = false;
     const currentAtt = state.nextMatch.attendances[uid] || { status: 'maybe', note: '' };
     const isResolved = currentAtt.status === 'yes' || currentAtt.status === 'no';
 
@@ -502,8 +498,6 @@ async function updateAttendanceDB(userId, status, note) {
     const uid = String(userId);
     const userData = state.users[uid] || state.currentUser;
     if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
-    state.nextMatch.reminderSentForDate = '';
-    state.nextMatch.sendReminderNow = false;
     const existing = state.nextMatch.attendances[uid];
     const order = existing && typeof existing.order === 'number'
         ? existing.order
@@ -910,8 +904,6 @@ function renderAddPlayerModalList() {
                 const order = getNextAttendanceOrder();
                 const payload = { id: uid, status: 'yes', note: '', name: u.name, order };
                 if (!state.nextMatch.attendances) state.nextMatch.attendances = {};
-    state.nextMatch.reminderSentForDate = '';
-    state.nextMatch.sendReminderNow = false;
                 state.nextMatch.attendances[uid] = payload;
 
                 const { db, ref, set } = window.FB;
@@ -1877,8 +1869,6 @@ function saveMatchResults() {
             d.setDate(d.getDate() + 7);
             state.nextMatch.date = `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getDate()).padStart(2, '0')}.`;
             state.nextMatch.attendances = {};
-    state.nextMatch.reminderSentForDate = '';
-    state.nextMatch.sendReminderNow = false;
             set(ref(db, 'nextMatch'), state.nextMatch);
         }
     }
